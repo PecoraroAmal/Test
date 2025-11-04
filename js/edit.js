@@ -1,9 +1,5 @@
 // homedit.js - Shared functions for home.js and edit.js
 
-// Global variables
-let loadedPublicData = { passwords: [], cards: [], wallets: [] };
-let loadedSensitiveData = new Map();
-let sessionKey = null; // Will be set in openFile
 let uploadedFile = null;
 let uploadedFileName = null;
 
