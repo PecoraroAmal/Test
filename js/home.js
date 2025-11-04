@@ -1,73 +1,62 @@
-// home.js - Read-only view, uses shared functions from homedit.js
+import * as homedit from './homedit.js';
 
+// Initialization when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Event listeners (shared setup)
+    // Add event listeners for inputs and filters
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {
-        fileInput.addEventListener('change', handleFileUpload);
+        fileInput.addEventListener('change', homedit.handleFileUpload);
     }
     const decryptBtn = document.getElementById('decryptBtn');
     if (decryptBtn) {
-        decryptBtn.addEventListener('click', () => openFile(false)); // false for read-only
+        decryptBtn.addEventListener('click', () => homedit.openFile(false)); // View mode
     }
     const passwordSearchInput = document.getElementById('passwordSearchInput');
     if (passwordSearchInput) {
-        passwordSearchInput.addEventListener('input', () => filterData(false));
+        passwordSearchInput.addEventListener('input', homedit.filterData);
     }
     const categoryFilter = document.getElementById('categoryFilter');
     if (categoryFilter) {
-        categoryFilter.addEventListener('change', () => filterData(false));
+        categoryFilter.addEventListener('change', homedit.filterData);
     }
     const cardSearchInput = document.getElementById('cardSearchInput');
     if (cardSearchInput) {
-        cardSearchInput.addEventListener('input', () => filterData(false));
+        cardSearchInput.addEventListener('input', homedit.filterData);
     }
     const circuitFilter = document.getElementById('circuitFilter');
     if (circuitFilter) {
-        circuitFilter.addEventListener('change', () => filterData(false));
+        circuitFilter.addEventListener('change', homedit.filterData);
     }
     const walletSearchInput = document.getElementById('walletSearchInput');
     if (walletSearchInput) {
-        walletSearchInput.addEventListener('input', () => filterData(false));
+        walletSearchInput.addEventListener('input', homedit.filterData);
     }
     const typeFilter = document.getElementById('typeFilter');
     if (typeFilter) {
-        typeFilter.addEventListener('change', () => filterData(false));
+        typeFilter.addEventListener('change', homedit.filterData);
     }
     const decryptPassword = document.getElementById('decryptPassword');
     if (decryptPassword) {
         decryptPassword.addEventListener('keypress', e => {
-            if (e.key === 'Enter') openFile(false);
+            if (e.key === 'Enter') homedit.openFile(false);
         });
     }
 
-    // Handle drag and drop and click for file upload (con debug logs)
+    // Handle drag and drop and click for file upload
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
         uploadZone.addEventListener('dragover', e => {
             e.preventDefault();
-            e.stopPropagation();
             uploadZone.classList.add('drag-over');
-            console.log('Drag over uploadZone'); // Debug
         });
-        uploadZone.addEventListener('dragleave', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadZone.classList.remove('drag-over');
-            console.log('Drag leave uploadZone'); // Debug
-        });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
         uploadZone.addEventListener('drop', e => {
             e.preventDefault();
-            e.stopPropagation();
             uploadZone.classList.remove('drag-over');
             const file = e.dataTransfer.files[0];
-            if (file) {
-                console.log('File dropped:', file.name); // Debug
-                handleFileUpload({ target: { files: [file] } });
-            } else {
-                console.warn('No file in drop event'); // Debug
-            }
+            if (file) homedit.handleFileUpload({ target: { files: [file] } });
         });
+        // Add click event to open file explorer
         uploadZone.addEventListener('click', () => {
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
@@ -79,14 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle section toggling
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
     if (togglePasswordBtn) {
-        togglePasswordBtn.addEventListener('click', () => toggleSection('passwordContainer', togglePasswordBtn));
+        togglePasswordBtn.addEventListener('click', () => homedit.toggleSection('passwordContainer', togglePasswordBtn));
     }
     const toggleCardBtn = document.getElementById('toggleCardBtn');
     if (toggleCardBtn) {
-        toggleCardBtn.addEventListener('click', () => toggleSection('cardContainer', toggleCardBtn));
+        toggleCardBtn.addEventListener('click', () => homedit.toggleSection('cardContainer', toggleCardBtn));
     }
     const toggleWalletBtn = document.getElementById('toggleWalletBtn');
     if (toggleWalletBtn) {
-        toggleWalletBtn.addEventListener('click', () => toggleSection('walletContainer', toggleWalletBtn));
+        toggleWalletBtn.addEventListener('click', () => homedit.toggleSection('walletContainer', toggleWalletBtn));
     }
 });
