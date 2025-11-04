@@ -28,10 +28,10 @@ async function deriveKey(password, salt) {
 
 // Function to derive key with Argon2
 async function deriveKeyArgon2(password, salt) {
-    const hash = await argon2.hash({
+    const hash = await window.argon2.hash({
         pass: password,
-        salt: arrayBufferToBase64(salt), // Convert salt to base64 for argon2-browser
-        type: argon2.ArgonType.Argon2id,
+        salt: salt, // Uint8Array
+        type: window.argon2.ArgonType.Argon2id,
         mem: 65536, // 64MB
         parallelism: 4,
         iterations: 3,

@@ -1,662 +1,1066 @@
-// edit.js - Editing view, uses shared functions from homedit.js
+// homedit.js - Shared functions for home.js and edit.js
 
-// Global variables specific to edit (loadedPublicData and loadedSensitiveData are in homedit.js)
+// Global variables
+let loadedPublicData = { passwords: [], cards: [], wallets: [] };
+let loadedSensitiveData = new Map();
+let sessionKey = null; // Will be set in openFile
+let uploadedFile = null;
+let uploadedFileName = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Event listeners (shared setup + edit-specific)
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-        fileInput.addEventListener('change', handleFileUpload);
-    }
-    const decryptBtn = document.getElementById('decryptBtn');
-    if (decryptBtn) {
-        decryptBtn.addEventListener('click', () => openFile(true)); // true for edit mode
-    }
-    const passwordSearchInput = document.getElementById('passwordSearchInput');
-    if (passwordSearchInput) {
-        passwordSearchInput.addEventListener('input', () => filterData(true));
-    }
-    const categoryFilter = document.getElementById('categoryFilter');
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', () => filterData(true));
-    }
-    const cardSearchInput = document.getElementById('cardSearchInput');
-    if (cardSearchInput) {
-        cardSearchInput.addEventListener('input', () => filterData(true));
-    }
-    const circuitFilter = document.getElementById('circuitFilter');
-    if (circuitFilter) {
-        circuitFilter.addEventListener('change', () => filterData(true));
-    }
-    const walletSearchInput = document.getElementById('walletSearchInput');
-    if (walletSearchInput) {
-        walletSearchInput.addEventListener('input', () => filterData(true));
-    }
-    const typeFilter = document.getElementById('typeFilter');
-    if (typeFilter) {
-        typeFilter.addEventListener('change', () => filterData(true));
-    }
-    const decryptPassword = document.getElementById('decryptPassword');
-    if (decryptPassword) {
-        decryptPassword.addEventListener('keypress', e => {
-            if (e.key === 'Enter') openFile(true);
-        });
-    }
-    const downloadPlainBtn = document.getElementById('downloadPlainBtn');
-    if (downloadPlainBtn) {
-        downloadPlainBtn.addEventListener('click', () => downloadFile(false));
-    }
-    const downloadEncryptedBtn = document.getElementById('downloadEncryptedBtn');
-    if (downloadEncryptedBtn) {
-        downloadEncryptedBtn.addEventListener('click', () => downloadFile(true));
-    }
-    const addPasswordBtn = document.getElementById('addPasswordBtn');
-    if (addPasswordBtn) {
-        addPasswordBtn.addEventListener('click', addPassword);
-    }
-    const addCardBtn = document.getElementById('addCardBtn');
-    if (addCardBtn) {
-        addCardBtn.addEventListener('click', addCard);
-    }
-    const addWalletBtn = document.getElementById('addWalletBtn');
-    if (addWalletBtn) {
-        addWalletBtn.addEventListener('click', addWallet);
-    }
-
-    // Handle drag and drop and click for file upload (con debug logs per verificare)
-    const uploadZone = document.getElementById('uploadZone');
-    if (uploadZone) {
-        uploadZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.stopPropagation(); // Aggiunto stopPropagation per prevenire bubbling che potrebbe interferire
-            uploadZone.classList.add('drag-over');
-            console.log('Drag over uploadZone in edit'); // Debug
-        });
-        uploadZone.addEventListener('dragleave', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadZone.classList.remove('drag-over');
-            console.log('Drag leave uploadZone in edit'); // Debug
-        });
-        uploadZone.addEventListener('drop', e => {
-            e.preventDefault();
-            e.stopPropagation(); // Aggiunto stopPropagation per assicurare che l'evento sia gestito solo qui
-            uploadZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                console.log('File dropped in edit:', file.name); // Debug
-                handleFileUpload({ target: { files: [file] } });
-            } else {
-                console.warn('No file in drop event in edit'); // Debug
-            }
-        });
-        uploadZone.addEventListener('click', () => {
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput) {
-                fileInput.click();
-            }
-        });
-    }
-
-    // Handle section toggling
-    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
-    if (togglePasswordBtn) {
-        togglePasswordBtn.addEventListener('click', () => toggleSection('passwordContainer', togglePasswordBtn));
-    }
-    const toggleCardBtn = document.getElementById('toggleCardBtn');
-    if (toggleCardBtn) {
-        toggleCardBtn.addEventListener('click', () => toggleSection('cardContainer', toggleCardBtn));
-    }
-    const toggleWalletBtn = document.getElementById('toggleWalletBtn');
-    if (toggleWalletBtn) {
-        toggleWalletBtn.addEventListener('click', () => toggleSection('walletContainer', toggleWalletBtn));
-    }
-});
-
-// Add password (implementato completamente, crea modal, separa public/sensitive, encrypt)
-async function addPassword() {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Add Password</h2>
-            <div class="form-group">
-                <label>Platform</label>
-                <input type="text" id="addPlatform" placeholder="Platform">
-            </div>
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="addUsername" placeholder="Username">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <div class="password-group">
-                    <input type="text" id="addPassword" placeholder="Password">
-                    <button class="btn btn-secondary" id="generatePwd">Generate</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="addNotes" placeholder="Notes"></textarea>
-            </div>
-            <div class="form-group">
-                <label>URL</label>
-                <input type="text" id="addUrl" placeholder="URL">
-            </div>
-            <div class="form-group">
-                <label>Category</label>
-                <input type="text" id="addCategory" placeholder="Category">
-            </div>
-            <div class="modal-buttons">
-                <button class="btn btn-primary" id="saveAddPwd">Save</button>
-                <button class="btn btn-secondary" id="cancelAddPwd">Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('generatePwd').addEventListener('click', () => {
-        document.getElementById('addPassword').value = generateRandomPassword();
-    });
-
-    document.getElementById('saveAddPwd').addEventListener('click', async () => {
-        const id = generateUniqueId();
-        const publicData = {
-            id,
-            platform: document.getElementById('addPlatform').value,
-            url: document.getElementById('addUrl').value,
-            category: document.getElementById('addCategory').value
-        };
-        const sensitiveData = {
-            username: document.getElementById('addUsername').value,
-            password: document.getElementById('addPassword').value,
-            notes: document.getElementById('addNotes').value
-        };
-        loadedPublicData.passwords.push(publicData);
-        loadedSensitiveData.set(id, await encryptSensitive(sensitiveData, sessionKey));
-        sortData();
-        displayData(true);
-        populateFilters();
-        showMessage('Password added successfully!', 'success');
-        document.body.removeChild(modal);
-    });
-
-    document.getElementById('cancelAddPwd').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
+// Function to generate a unique ID (shared, but mainly used in edit)
+function generateUniqueId() {
+    return 'xxxx-xxxx-xxxx-xxxx'.replace(/[x]/g, () => {
+        return (Math.random() * 16 | 0).toString(16);
     });
 }
 
-// Add card (implementato simile a addPassword)
-async function addCard() {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Add Card</h2>
-            <div class="form-group">
-                <label>Issuer</label>
-                <input type="text" id="addIssuer" placeholder="Issuer">
-            </div>
-            <div class="form-group">
-                <label>PAN</label>
-                <input type="text" id="addPan" placeholder="PAN">
-            </div>
-            <div class="form-group">
-                <label>Expiry Date</label>
-                <input type="text" id="addExpiry" placeholder="MM/YY">
-            </div>
-            <div class="form-group">
-                <label>CVV</label>
-                <input type="text" id="addCvv" placeholder="CVV">
-            </div>
-            <div class="form-group">
-                <label>PIN</label>
-                <input type="text" id="addPin" placeholder="PIN">
-            </div>
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="addNotes" placeholder="Notes"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Network</label>
-                <input type="text" id="addNetwork" placeholder="Network (e.g., Visa)">
-            </div>
-            <div class="modal-buttons">
-                <button class="btn btn-primary" id="saveAddCard">Save</button>
-                <button class="btn btn-secondary" id="cancelAddCard">Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
+// Handle file upload (shared)
+function handleFileUpload(event) {
+    const files = event.target?.files || event.dataTransfer?.files;
+    const file = files?.[0];
 
-    document.getElementById('saveAddCard').addEventListener('click', async () => {
-        const id = generateUniqueId();
-        const publicData = {
-            id,
-            issuer: document.getElementById('addIssuer').value,
-            network: document.getElementById('addNetwork').value
-        };
-        const sensitiveData = {
-            pan: document.getElementById('addPan').value,
-            expiryDate: document.getElementById('addExpiry').value,
-            cvv: document.getElementById('addCvv').value,
-            pin: document.getElementById('addPin').value,
-            notes: document.getElementById('addNotes').value
-        };
-        loadedPublicData.cards.push(publicData);
-        loadedSensitiveData.set(id, await encryptSensitive(sensitiveData, sessionKey));
-        sortData();
-        displayData(true);
-        populateFilters();
-        showMessage('Card added successfully!', 'success');
-        document.body.removeChild(modal);
-    });
-
-    document.getElementById('cancelAddCard').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
-    });
-}
-
-// Add wallet (implementato simile)
-async function addWallet() {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Add Wallet</h2>
-            <div class="form-group">
-                <label>Wallet Name</label>
-                <input type="text" id="addWalletName" placeholder="Wallet Name">
-            </div>
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="addUsername" placeholder="Username">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="text" id="addPassword" placeholder="Password">
-            </div>
-            <div class="form-group">
-                <label>Key</label>
-                <textarea id="addKey" placeholder="Key"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Address</label>
-                <input type="text" id="addAddress" placeholder="Address">
-            </div>
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="addNotes" placeholder="Notes"></textarea>
-            </div>
-            <div class="form-group">
-                <label>Type</label>
-                <input type="text" id="addType" placeholder="Type (e.g., Crypto)">
-            </div>
-            <div class="modal-buttons">
-                <button class="btn btn-primary" id="saveAddWallet">Save</button>
-                <button class="btn btn-secondary" id="cancelAddWallet">Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('saveAddWallet').addEventListener('click', async () => {
-        const id = generateUniqueId();
-        const publicData = {
-            id,
-            wallet: document.getElementById('addWalletName').value,
-            type: document.getElementById('addType').value
-        };
-        const sensitiveData = {
-            username: document.getElementById('addUsername').value,
-            password: document.getElementById('addPassword').value,
-            key: document.getElementById('addKey').value,
-            address: document.getElementById('addAddress').value,
-            notes: document.getElementById('addNotes').value
-        };
-        loadedPublicData.wallets.push(publicData);
-        loadedSensitiveData.set(id, await encryptSensitive(sensitiveData, sessionKey));
-        sortData();
-        displayData(true);
-        populateFilters();
-        showMessage('Wallet added successfully!', 'success');
-        document.body.removeChild(modal);
-    });
-
-    document.getElementById('cancelAddWallet').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
-    });
-}
-
-// Edit item (implementato, decrypt, modal prefilled, update public/re-encrypt sensitive)
-async function editItem(id, type) {
-    let publicData, sensitiveData;
-    switch (type) {
-        case 'password':
-            publicData = loadedPublicData.passwords.find(p => p.id === id);
-            sensitiveData = await decryptSensitive(loadedSensitiveData.get(id), sessionKey);
-            break;
-        case 'card':
-            publicData = loadedPublicData.cards.find(c => c.id === id);
-            sensitiveData = await decryptSensitive(loadedSensitiveData.get(id), sessionKey);
-            break;
-        case 'wallet':
-            publicData = loadedPublicData.wallets.find(w => w.id === id);
-            sensitiveData = await decryptSensitive(loadedSensitiveData.get(id), sessionKey);
-            break;
-        default:
-            return;
-    }
-
-    if (!publicData || !sensitiveData) {
-        showMessage('Item not found', 'error');
+    if (!file) {
+        showMessage('No file selected', 'error');
         return;
     }
 
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    let innerHTML = '<div class="modal-content"><h2>Edit Item</h2>';
-
-    if (type === 'password') {
-        innerHTML += `
-            <div class="form-group">
-                <label>Platform</label>
-                <input type="text" id="editPlatform" value="${escapeHtml(publicData.platform)}">
-            </div>
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="editUsername" value="${escapeHtml(sensitiveData.username)}">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <div class="password-group">
-                    <input type="text" id="editPassword" value="${escapeHtml(sensitiveData.password)}">
-                    <button class="btn btn-secondary" id="generatePwd">Generate</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="editNotes">${escapeHtml(sensitiveData.notes)}</textarea>
-            </div>
-            <div class="form-group">
-                <label>URL</label>
-                <input type="text" id="editUrl" value="${escapeHtml(publicData.url)}">
-            </div>
-            <div class="form-group">
-                <label>Category</label>
-                <input type="text" id="editCategory" value="${escapeHtml(publicData.category)}">
-            </div>
-        `;
-    } else if (type === 'card') {
-        innerHTML += `
-            <div class="form-group">
-                <label>Issuer</label>
-                <input type="text" id="editIssuer" value="${escapeHtml(publicData.issuer)}">
-            </div>
-            <div class="form-group">
-                <label>PAN</label>
-                <input type="text" id="editPan" value="${escapeHtml(sensitiveData.pan)}">
-            </div>
-            <div class="form-group">
-                <label>Expiry Date</label>
-                <input type="text" id="editExpiry" value="${escapeHtml(sensitiveData.expiryDate)}">
-            </div>
-            <div class="form-group">
-                <label>CVV</label>
-                <input type="text" id="editCvv" value="${escapeHtml(sensitiveData.cvv)}">
-            </div>
-            <div class="form-group">
-                <label>PIN</label>
-                <input type="text" id="editPin" value="${escapeHtml(sensitiveData.pin)}">
-            </div>
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="editNotes">${escapeHtml(sensitiveData.notes)}</textarea>
-            </div>
-            <div class="form-group">
-                <label>Network</label>
-                <input type="text" id="editNetwork" value="${escapeHtml(publicData.network)}">
-            </div>
-        `;
-    } else if (type === 'wallet') {
-        innerHTML += `
-            <div class="form-group">
-                <label>Wallet Name</label>
-                <input type="text" id="editWalletName" value="${escapeHtml(publicData.wallet)}">
-            </div>
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="editUsername" value="${escapeHtml(sensitiveData.username)}">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="text" id="editPassword" value="${escapeHtml(sensitiveData.password)}">
-            </div>
-            <div class="form-group">
-                <label>Key</label>
-                <textarea id="editKey">${escapeHtml(sensitiveData.key)}</textarea>
-            </div>
-            <div class="form-group">
-                <label>Address</label>
-                <input type="text" id="editAddress" value="${escapeHtml(sensitiveData.address)}">
-            </div>
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="editNotes">${escapeHtml(sensitiveData.notes)}</textarea>
-            </div>
-            <div class="form-group">
-                <label>Type</label>
-                <input type="text" id="editType" value="${escapeHtml(publicData.type)}">
-            </div>
-        `;
-    }
-
-    innerHTML += `
-            <div class="modal-buttons">
-                <button class="btn btn-primary" id="saveEdit">Save</button>
-                <button class="btn btn-secondary" id="cancelEdit">Cancel</button>
-            </div>
-        </div>
-    `;
-    modal.innerHTML = innerHTML;
-    document.body.appendChild(modal);
-
-    if (type === 'password') {
-        document.getElementById('generatePwd').addEventListener('click', () => {
-            document.getElementById('editPassword').value = generateRandomPassword();
-        });
-    }
-
-    document.getElementById('saveEdit').addEventListener('click', async () => {
-        let updatedPublic = {};
-        let updatedSensitive = {};
-        if (type === 'password') {
-            updatedPublic = {
-                platform: document.getElementById('editPlatform').value,
-                url: document.getElementById('editUrl').value,
-                category: document.getElementById('editCategory').value
-            };
-            updatedSensitive = {
-                username: document.getElementById('editUsername').value,
-                password: document.getElementById('editPassword').value,
-                notes: document.getElementById('editNotes').value
-            };
-            Object.assign(publicData, updatedPublic);
-        } else if (type === 'card') {
-            updatedPublic = {
-                issuer: document.getElementById('editIssuer').value,
-                network: document.getElementById('editNetwork').value
-            };
-            updatedSensitive = {
-                pan: document.getElementById('editPan').value,
-                expiryDate: document.getElementById('editExpiry').value,
-                cvv: document.getElementById('editCvv').value,
-                pin: document.getElementById('editPin').value,
-                notes: document.getElementById('editNotes').value
-            };
-            Object.assign(publicData, updatedPublic);
-        } else if (type === 'wallet') {
-            updatedPublic = {
-                wallet: document.getElementById('editWalletName').value,
-                type: document.getElementById('editType').value
-            };
-            updatedSensitive = {
-                username: document.getElementById('editUsername').value,
-                password: document.getElementById('editPassword').value,
-                key: document.getElementById('editKey').value,
-                address: document.getElementById('editAddress').value,
-                notes: document.getElementById('editNotes').value
-            };
-            Object.assign(publicData, updatedPublic);
-        }
-        loadedSensitiveData.set(id, await encryptSensitive(updatedSensitive, sessionKey));
-        sortData();
-        displayData(true);
-        populateFilters();
-        showMessage('Item updated successfully!', 'success');
-        document.body.removeChild(modal);
-    });
-
-    document.getElementById('cancelEdit').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
-    });
-}
-
-// Delete item (implementato, modal conferma, rimuovi da public/sensitive)
-function deleteItem(id, type) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Confirm Delete</h2>
-            <p>Are you sure you want to delete this item?</p>
-            <div class="modal-buttons">
-                <button class="btn btn-danger" id="confirmDelete">Delete</button>
-                <button class="btn btn-secondary" id="cancelDelete">Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    document.getElementById('confirmDelete').addEventListener('click', () => {
-        if (type === 'password') {
-            loadedPublicData.passwords = loadedPublicData.passwords.filter(p => p.id !== id);
-        } else if (type === 'card') {
-            loadedPublicData.cards = loadedPublicData.cards.filter(c => c.id !== id);
-        } else if (type === 'wallet') {
-            loadedPublicData.wallets = loadedPublicData.wallets.filter(w => w.id !== id);
-        }
-        loadedSensitiveData.delete(id);
-        displayData(true);
-        populateFilters();
-        showMessage('Item deleted successfully!', 'success');
-        document.body.removeChild(modal);
-    });
-
-    document.getElementById('cancelDelete').addEventListener('click', () => {
-        document.body.removeChild(modal);
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
-    });
-}
-
-// Download file (edit-specific, reconstruct full data by decrypting)
-async function downloadFile(encrypted) {
-    if (!loadedPublicData) {
-        showMessage('No data to save', 'error');
+    if (file.size > 50 * 1024 * 1024) {
+        showMessage('File too large (max 0.5 MB). Keep under ~3,000 passwords.', 'error');
+        if (event.target) event.target.value = '';
         return;
     }
 
-    const password = document.getElementById('encryptPassword')?.value || '';
+    if (!file.name.toLowerCase().endsWith('.json')) {
+        showMessage('Error: please select a valid .json file', 'error');
+        if (event.target) event.target.value = '';
+        return;
+    }
+
+    uploadedFileName = file.name;
+    const reader = new FileReader();
+
+    reader.onerror = () => {
+        showMessage('Error reading the file', 'error');
+        uploadedFile = null;
+        uploadedFileName = null;
+        if (event.target) event.target.value = '';
+    };
+
+    reader.onload = (e) => {
+        try {
+            uploadedFile = e.target.result;
+
+            const fileNameElement = document.querySelector('.file-name');
+            if (fileNameElement) {
+                fileNameElement.textContent = uploadedFileName;
+            }
+
+            showMessage('File uploaded successfully. Click "Open File" to continue.', 'info');
+        } catch (err) {
+            showMessage('Error processing the file', 'error');
+            uploadedFile = null;
+            uploadedFileName = null;
+            if (event.target) event.target.value = '';
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+// Open file (shared, with separation of sensitive data)
+// Aggiunto check per vecchi file encrypted senza password, e await per processing
+async function openFile(isEditMode = false) {
+    if (!uploadedFile) {
+        showMessage('Select a valid JSON file first', 'error');
+        return;
+    }
     
-    if (encrypted && password.length < 8) {
-        showMessage('Password must be at least 8 characters', 'error');
-        return;
+    const password = document.getElementById('decryptPassword')?.value || '';
+    const btn = document.getElementById('decryptBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening...';
     }
     
     try {
-        // Reconstruct full data
-        const fullData = {
+        let data;
+        try {
+            if (!password) {
+                // Prova prima a parse come JSON plain
+                try {
+                    data = JSON.parse(uploadedFile);
+                } catch (parseErr) {
+                    // Se fallisce parse e sembra base64/encrypted, suggerisci password
+                    if (uploadedFile.trim().match(/^[A-Za-z0-9+/=]+$/)) {
+                        throw new Error('File seems encrypted. Please enter the password to decrypt.');
+                    } else {
+                        throw parseErr;
+                    }
+                }
+            } else {
+                data = await decryptData(uploadedFile, password);
+            }
+        } catch (e) {
+            console.error('Parsing/decrypting error:', e);
+            throw new Error('Error parsing or decrypting JSON: ' + e.message);
+        }
+        
+        if (!validateJSONStructure(data)) throw new Error('Invalid JSON structure');
+        
+        // Generate session key: from password if provided, else random
+        const salt = window.crypto.getRandomValues(new Uint8Array(16));
+        sessionKey = await deriveKeySensitive(password || arrayBufferToBase64(window.crypto.getRandomValues(new Uint8Array(32))), salt);
+        
+        // Separate public and sensitive data
+        loadedPublicData = {
             passwords: [],
             cards: [],
             wallets: []
         };
+        loadedSensitiveData.clear();
         
-        await Promise.all(loadedPublicData.passwords.map(async (pwd) => {
-            const sensitive = await decryptSensitive(loadedSensitiveData.get(pwd.id), sessionKey);
-            fullData.passwords.push({ ...pwd, ...sensitive });
-        }));
-        await Promise.all(loadedPublicData.cards.map(async (card) => {
-            const sensitive = await decryptSensitive(loadedSensitiveData.get(card.id), sessionKey);
-            fullData.cards.push({ ...card, ...sensitive });
-        }));
-        await Promise.all(loadedPublicData.wallets.map(async (wallet) => {
-            const sensitive = await decryptSensitive(loadedSensitiveData.get(wallet.id), sessionKey);
-            fullData.wallets.push({ ...wallet, ...sensitive });
+        // Process passwords with await
+        await Promise.all((Array.isArray(data.passwords) ? data.passwords : []).map(async (pwd) => {
+            const id = pwd.id || generateUniqueId();
+            const publicPwd = {
+                id,
+                platform: pwd.platform || '',
+                url: pwd.url || '',
+                category: pwd.category || ''
+            };
+            const sensitivePwd = {
+                username: pwd.username || '',
+                password: pwd.password || '',
+                notes: pwd.notes || ''
+            };
+            loadedPublicData.passwords.push(publicPwd);
+            loadedSensitiveData.set(id, await encryptSensitive(sensitivePwd, sessionKey));
         }));
         
-        let content;
-        if (encrypted) {
-            showMessage('Encrypting...', 'info');
-            content = await encryptData(fullData, password);
-        } else {
-            content = JSON.stringify(fullData, null, 2);
+        // Process cards
+        await Promise.all((Array.isArray(data.cards) ? data.cards : []).map(async (card) => {
+            const id = card.id || generateUniqueId();
+            const publicCard = {
+                id,
+                issuer: card.issuer || '',
+                network: card.network || ''
+            };
+            const sensitiveCard = {
+                pan: card.pan || '',
+                expiryDate: card.expiryDate || '',
+                cvv: card.cvv || '',
+                pin: card.pin || '',
+                notes: card.notes || ''
+            };
+            loadedPublicData.cards.push(publicCard);
+            loadedSensitiveData.set(id, await encryptSensitive(sensitiveCard, sessionKey));
+        }));
+        
+        // Process wallets
+        await Promise.all((Array.isArray(data.wallets) ? data.wallets : []).map(async (wallet) => {
+            const id = wallet.id || generateUniqueId();
+            const publicWallet = {
+                id,
+                wallet: wallet.wallet || '',
+                type: wallet.type || ''
+            };
+            const sensitiveWallet = {
+                username: wallet.username || '',
+                password: wallet.password || '',
+                key: wallet.key || '',
+                address: wallet.address || '',
+                notes: wallet.notes || ''
+            };
+            loadedPublicData.wallets.push(publicWallet);
+            loadedSensitiveData.set(id, await encryptSensitive(sensitiveWallet, sessionKey));
+        }));
+        
+        sortData();
+        displayData(isEditMode);
+        populateFilters();
+        
+        if (document.getElementById('decryptPassword')) {
+            document.getElementById('decryptPassword').value = '';
+        }
+        uploadedFile = null;
+        uploadedFileName = null;
+        if (document.getElementById('fileInput')) {
+            document.getElementById('fileInput').value = '';
+        }
+        const fileNameElement = document.querySelector('.file-name');
+        if (fileNameElement) {
+            fileNameElement.textContent = '';
         }
         
-        const blob = new Blob([content], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `passwords${encrypted ? '_encrypted' : ''}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        showMessage('File downloaded successfully!', 'success');
+        showMessage('File opened successfully!', 'success');
     } catch (error) {
-        console.error('Saving error:', error);
-        showMessage('Error during saving: ' + error.message, 'error');
+        console.error('File opening error:', error);
+        showMessage(password ? 
+            'Incorrect password or corrupted file' : 
+            'Invalid file. If encrypted, enter the password', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-unlock"></i> Open File';
+        }
     }
 }
 
-// Generate random password (edit-specific)
-function generateRandomPassword(length = 16) {
-    const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?éèçò°ùà§';
-    const array = new Uint8Array(length);
-    window.crypto.getRandomValues(array);
-    
-    let password = '';
-    for (let i = 0; i < length; i++) {
-        password += characters[array[i] % characters.length];
-    }
-    return password;
+// Validate JSON structure (shared)
+function validateJSONStructure(data) {
+    return data && typeof data === 'object' &&
+           (data.passwords === undefined || Array.isArray(data.passwords)) &&
+           (data.cards === undefined || Array.isArray(data.cards)) &&
+           (data.wallets === undefined || Array.isArray(data.wallets));
 }
+
+// Sort data (shared, sorts public data)
+function sortData() {
+    loadedPublicData.passwords.sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
+    loadedPublicData.cards.sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
+    loadedPublicData.wallets.sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
+}
+
+// Toggle section (shared)
+function toggleSection(containerId, button) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        const isHidden = container.classList.contains('hidden');
+        container.classList.toggle('hidden');
+        button.innerHTML = isHidden ? 
+            `<i class="fas fa-eye-slash"></i> Hide ${containerId.replace('Container', '')}s` :
+            `<i class="fas fa-eye"></i> Show ${containerId.replace('Container', '')}s`;
+    }
+}
+
+// Display data (shared, calls specific read-only or edit versions)
+function displayData(isEditMode = false) {
+    if (isEditMode) {
+        displayPasswordsEdit(loadedPublicData.passwords);
+        displayCardsEdit(loadedPublicData.cards);
+        displayWalletsEdit(loadedPublicData.wallets);
+    } else {
+        displayPasswordsReadOnly(loadedPublicData.passwords);
+        displayCardsReadOnly(loadedPublicData.cards);
+        displayWalletsReadOnly(loadedPublicData.wallets);
+    }
+}
+
+// Display passwords read-only (no edit/delete buttons, decrypt on demand)
+function displayPasswordsReadOnly(passwords) {
+    const container = document.getElementById('passwordContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!passwords.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-lock"></i>
+                <p>No passwords saved</p>
+            </div>`;
+        return;
+    }
+
+    passwords.forEach(pwd => {
+        const card = document.createElement('div');
+        card.className = 'preview-card-item';
+        card.dataset.id = pwd.id;
+        card.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(pwd.platform)}</h3>
+            <div class="field-container">
+                <label class="field-label">Username</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'username')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Password</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'password')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">URL</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(pwd.url || '-')}</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.url}', 'URL')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Category</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(pwd.category || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// Display passwords edit (with edit/delete buttons)
+function displayPasswordsEdit(passwords) {
+    const container = document.getElementById('passwordContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!passwords.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-lock"></i>
+                <p>No passwords saved</p>
+            </div>`;
+        return;
+    }
+
+    passwords.forEach(pwd => {
+        const card = document.createElement('div');
+        card.className = 'preview-card-item';
+        card.dataset.id = pwd.id;
+        card.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(pwd.platform)}</h3>
+            <div class="field-container">
+                <label class="field-label">Username</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'username')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-icon edit-btn" onclick="editItem('${pwd.id}', 'password')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-icon delete-btn" onclick="deleteItem('${pwd.id}', 'password')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Password</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'password')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">URL</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(pwd.url || '-')}</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.url}', 'URL')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Category</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(pwd.category || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// Display cards read-only
+function displayCardsReadOnly(cards) {
+    const container = document.getElementById('cardContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!cards.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-credit-card"></i>
+                <p>No cards saved</p>
+            </div>`;
+        return;
+    }
+
+    cards.forEach(card => {
+        const item = document.createElement('div');
+        item.className = 'preview-card-item';
+        item.dataset.id = card.id;
+        item.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(card.issuer)}</h3>
+            <div class="field-container">
+                <label class="field-label">PAN</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="pan">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'pan')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Expiry</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="expiryDate">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'expiryDate')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">CVV</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="cvv">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'cvv')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">PIN</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="pin">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'pin')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Network</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(card.network || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Display cards edit
+function displayCardsEdit(cards) {
+    const container = document.getElementById('cardContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!cards.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-credit-card"></i>
+                <p>No cards saved</p>
+            </div>`;
+        return;
+    }
+
+    cards.forEach(card => {
+        const item = document.createElement('div');
+        item.className = 'preview-card-item';
+        item.dataset.id = card.id;
+        item.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(card.issuer)}</h3>
+            <div class="field-container">
+                <label class="field-label">PAN</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="pan">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'pan')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-icon edit-btn" onclick="editItem('${card.id}', 'card')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-icon delete-btn" onclick="deleteItem('${card.id}', 'card')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Expiry</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="expiryDate">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'expiryDate')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">CVV</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="cvv">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'cvv')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">PIN</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="pin">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'pin')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Network</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(card.network || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Display wallets read-only
+function displayWalletsReadOnly(wallets) {
+    const container = document.getElementById('walletContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!wallets.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-wallet"></i>
+                <p>No wallets saved</p>
+            </div>`;
+        return;
+    }
+
+    wallets.forEach(wallet => {
+        const item = document.createElement('div');
+        item.className = 'preview-card-item';
+        item.dataset.id = wallet.id;
+        item.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(wallet.wallet)}</h3>
+            <div class="field-container">
+                <label class="field-label">Username</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'username')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Password</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'password')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Key</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="key">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'key')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Address</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="address">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'address')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Type</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(wallet.type || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Display wallets edit
+function displayWalletsEdit(wallets) {
+    const container = document.getElementById('walletContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!wallets.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-wallet"></i>
+                <p>No wallets saved</p>
+            </div>`;
+        return;
+    }
+
+    wallets.forEach(wallet => {
+        const item = document.createElement('div');
+        item.className = 'preview-card-item';
+        item.dataset.id = wallet.id;
+        item.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(wallet.wallet)}</h3>
+            <div class="field-container">
+                <label class="field-label">Username</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'username')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-icon edit-btn" onclick="editItem('${wallet.id}', 'wallet')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-icon delete-btn" onclick="deleteItem('${wallet.id}', 'wallet')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Password</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'password')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Key</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="key">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'key')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Address</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="address">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'address')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Type</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(wallet.type || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Toggle visibility (shared, decrypts on demand)
+async function toggleVisibility(button, id, type) {
+    const parent = button.closest('.field-container');
+    const span = parent.querySelector('.hidden-content');
+    if (!span) return;
+
+    const field = span.dataset.field;
+    const isHidden = span.textContent === '••••••••••••';
+
+    if (isHidden) {
+        try {
+            const encrypted = loadedSensitiveData.get(id);
+            const sensitive = await decryptSensitive(encrypted, sessionKey);
+            const value = sensitive[field] || '-';
+            span.textContent = escapeHtml(value);
+            button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+        } catch (err) {
+            showMessage('Error decrypting data', 'error');
+        }
+    } else {
+        span.textContent = '••••••••••••';
+        button.innerHTML = '<i class="fas fa-eye"></i>';
+    }
+}
+
+// Copy to clipboard (shared, decrypts on demand)
+async function copyToClipboard(id, type, field) {
+    try {
+        const encrypted = loadedSensitiveData.get(id);
+        const sensitive = await decryptSensitive(encrypted, sessionKey);
+        const text = sensitive[field] || '';
+        if (!text) return;
+
+        await navigator.clipboard.writeText(text);
+        showMessage(`${field} copied to clipboard!`, 'success');
+    } catch (err) {
+        showMessage('Error during copying', 'error');
+    }
+}
+
+// Filter data (shared, filters on public data only, calls appropriate display based on mode)
+function filterData(isEditMode = false) {
+    const passwordSearchInput = document.getElementById('passwordSearchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const cardSearchInput = document.getElementById('cardSearchInput');
+    const circuitFilter = document.getElementById('circuitFilter');
+    const walletSearchInput = document.getElementById('walletSearchInput');
+    const typeFilter = document.getElementById('typeFilter');
+    
+    if (!passwordSearchInput || !categoryFilter || !cardSearchInput || !circuitFilter || !walletSearchInput || !typeFilter) return;
+    
+    const passwordSearch = passwordSearchInput.value.toLowerCase();
+    const category = categoryFilter.value.toLowerCase();
+    const cardSearch = cardSearchInput.value.toLowerCase();
+    const circuit = circuitFilter.value.toLowerCase();
+    const walletSearch = walletSearchInput.value.toLowerCase();
+    const walletType = typeFilter.value.toLowerCase();
+    
+    // Filter passwords (on public fields)
+    const filteredPasswords = loadedPublicData.passwords.filter(pwd => {
+        const searchMatch = !passwordSearch || 
+            pwd.platform.toLowerCase().includes(passwordSearch) ||
+            (pwd.url && pwd.url.toLowerCase().includes(passwordSearch)) ||
+            (pwd.category && pwd.category.toLowerCase().includes(passwordSearch));
+        
+        const categoryMatch = !category || 
+            (pwd.category && pwd.category.toLowerCase() === category);
+        
+        return searchMatch && categoryMatch;
+    }).sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
+    
+    // Filter cards
+    const filteredCards = loadedPublicData.cards.filter(card => {
+        const searchMatch = !cardSearch || 
+            card.issuer.toLowerCase().includes(cardSearch) ||
+            (card.network && card.network.toLowerCase().includes(cardSearch));
+        
+        const circuitMatch = !circuit || 
+            (card.network && card.network.toLowerCase() === circuit);
+        
+        return searchMatch && circuitMatch;
+    }).sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
+    
+    // Filter wallets
+    const filteredWallets = loadedPublicData.wallets.filter(wallet => {
+        const searchMatch = !walletSearch || 
+            wallet.wallet.toLowerCase().includes(walletSearch) ||
+            (wallet.type && wallet.type.toLowerCase().includes(walletSearch));
+        
+        const typeMatch = !walletType || 
+            (wallet.type && wallet.type.toLowerCase() === walletType);
+        
+        return searchMatch && typeMatch;
+    }).sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
+    
+    if (isEditMode) {
+        displayPasswordsEdit(filteredPasswords);
+        displayCardsEdit(filteredCards);
+        displayWalletsEdit(filteredWallets);
+    } else {
+        displayPasswordsReadOnly(filteredPasswords);
+        displayCardsReadOnly(filteredCards);
+        displayWalletsReadOnly(filteredWallets);
+    }
+}
+
+// Populate filters (shared, uses public data)
+function populateFilters() {
+    populateCategoryFilter();
+    populateCircuitFilter();
+    populateTypeFilter();
+}
+
+function populateCategoryFilter() {
+    const select = document.getElementById('categoryFilter');
+    if (!select) return;
+    
+    const categories = new Set();
+    loadedPublicData.passwords.forEach(pwd => {
+        if (pwd.category) categories.add(pwd.category);
+    });
+    
+    select.innerHTML = '<option value="">All categories</option>';
+    Array.from(categories).sort().forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+    });
+}
+
+function populateCircuitFilter() {
+    const select = document.getElementById('circuitFilter');
+    if (!select) return;
+    
+    const networks = new Set();
+    loadedPublicData.cards.forEach(card => {
+        if (card.network) networks.add(card.network);
+    });
+    
+    select.innerHTML = '<option value="">All networks</option>';
+    Array.from(networks).sort().forEach(circ => {
+        const option = document.createElement('option');
+        option.value = circ;
+        option.textContent = circ;
+        select.appendChild(option);
+    });
+}
+
+function populateTypeFilter() {
+    const select = document.getElementById('typeFilter');
+    if (!select) return;
+    
+    const types = new Set();
+    loadedPublicData.wallets.forEach(wallet => {
+        if (wallet.type) types.add(wallet.type);
+    });
+    
+    select.innerHTML = '<option value="">All types</option>';
+    Array.from(types).sort().forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = type;
+        select.appendChild(option);
+    });
+}
+
+// Show message (shared)
+function showMessage(text, type) {
+    const oldMessage = document.querySelector('.toast-message');
+    if (oldMessage) oldMessage.remove();
+    
+    const message = document.createElement('div');
+    message.className = `toast-message toast-${type}`;
+    message.textContent = text;
+    message.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        background: ${type === 'success' ? 'var(--success)' : 
+                     type === 'error' ? 'var(--danger)' : 
+                     'var(--primary-color)'};
+        color: white;
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+    `;
+    
+    document.body.appendChild(message);
+    setTimeout(() => {
+        message.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => message.remove(), 300);
+    }, 3000);
+}
+
+// Escape HTML (shared)
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Export as globals for vanilla JS compatibility
+window.generateUniqueId = generateUniqueId;
+window.handleFileUpload = handleFileUpload;
+window.openFile = openFile;
+window.validateJSONStructure = validateJSONStructure;
+window.sortData = sortData;
+window.toggleSection = toggleSection;
+window.displayData = displayData;
+window.displayPasswordsReadOnly = displayPasswordsReadOnly;
+window.displayPasswordsEdit = displayPasswordsEdit;
+window.displayCardsReadOnly = displayCardsReadOnly;
+window.displayCardsEdit = displayCardsEdit;
+window.displayWalletsReadOnly = displayWalletsReadOnly;
+window.displayWalletsEdit = displayWalletsEdit;
+window.toggleVisibility = toggleVisibility;
+window.copyToClipboard = copyToClipboard;
+window.filterData = filterData;
+window.populateFilters = populateFilters;
+window.populateCategoryFilter = populateCategoryFilter;
+window.populateCircuitFilter = populateCircuitFilter;
+window.populateTypeFilter = populateTypeFilter;
+window.showMessage = showMessage;
+window.escapeHtml = escapeHtml;
