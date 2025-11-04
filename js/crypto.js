@@ -28,23 +28,28 @@ async function deriveKey(password, salt) {
 
 // Function to derive key with Argon2
 async function deriveKeyArgon2(password, salt) {
-    const hash = await window.argon2.hash({
-        pass: password,
-        salt: salt, // Uint8Array
-        type: window.argon2.ArgonType.Argon2id,
-        mem: 65536, // 64MB
-        parallelism: 4,
-        iterations: 3,
-        hashLen: 32
-    });
-    const keyBuffer = hash.hash; // Uint8Array raw hash
-    return window.crypto.subtle.importKey(
-        'raw',
-        keyBuffer,
-        'AES-GCM',
-        false,
-        ['encrypt', 'decrypt']
-    );
+    try {
+        const hash = await window.argon2.hash({
+            pass: password,
+            salt: arrayBufferToBase64(salt),
+            type: window.argon2.ArgonType.Argon2id,
+            mem: 65536,
+            parallelism: 4,
+            iterations: 3,
+            hashLen: 32
+        });
+        const keyBuffer = base64ToArrayBuffer(hash.encoded.split('$').pop());
+        return window.crypto.subtle.importKey(
+            'raw',
+            keyBuffer,
+            'AES-GCM',
+            false,
+            ['encrypt', 'decrypt']
+        );
+    } catch (err) {
+        console.error('Argon2 error:', err);
+        throw new Error('Argon2 failed - check wasm file');
+    }
 }
 
 // Derive key for sensitive data (PBKDF2 con 100k iterations per velocità)
