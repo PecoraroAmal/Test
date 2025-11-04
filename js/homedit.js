@@ -332,7 +332,7 @@ function displayPasswordsReadOnly(passwords) {
     });
 }
 
-// Display passwords edit (with edit/delete buttons)
+// Display passwords edit (with edit/delete buttons on first field)
 function displayPasswordsEdit(passwords) {
     const container = document.getElementById('passwordContainer');
     if (!container) return;
@@ -523,7 +523,7 @@ function displayCardsReadOnly(cards) {
     });
 }
 
-// Display cards edit
+// Display cards edit (edit/delete on first field)
 function displayCardsEdit(cards) {
     const container = document.getElementById('cardContainer');
     if (!container) return;
@@ -731,7 +731,7 @@ function displayWalletsReadOnly(wallets) {
     });
 }
 
-// Display wallets edit
+// Display wallets edit (edit/delete on first field)
 function displayWalletsEdit(wallets) {
     const container = document.getElementById('walletContainer');
     if (!container) return;
