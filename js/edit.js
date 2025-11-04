@@ -1,17 +1,11 @@
 import * as homedit from './homedit.js';
 
-// Global variables (shared via import)
-
-// Initialization when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Event listeners (shared ones use homedit)
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-        fileInput.addEventListener('change', homedit.handleFileUpload);
-    }
+    homedit.initUploadZone();
+
     const decryptBtn = document.getElementById('decryptBtn');
     if (decryptBtn) {
-        decryptBtn.addEventListener('click', () => homedit.openFile(true)); // Edit mode
+        decryptBtn.addEventListener('click', () => homedit.openFile(true));
     }
     const passwordSearchInput = document.getElementById('passwordSearchInput');
     if (passwordSearchInput) {
@@ -63,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addWalletBtn) {
         addWalletBtn.addEventListener('click', addWallet);
     }
-    // Handle section toggling
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
     if (togglePasswordBtn) {
         togglePasswordBtn.addEventListener('click', () => homedit.toggleSection('passwordContainer', togglePasswordBtn));
@@ -76,49 +69,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleWalletBtn) {
         toggleWalletBtn.addEventListener('click', () => homedit.toggleSection('walletContainer', toggleWalletBtn));
     }
-
-    // Handle drag and drop and click for file upload
-    const uploadZone = document.getElementById('uploadZone');
-    if (uploadZone) {
-        uploadZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            uploadZone.classList.add('drag-over');
-        });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-        uploadZone.addEventListener('drop', e => {
-            e.preventDefault();
-            uploadZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) homedit.handleFileUpload({ target: { files: [file] } });
-        });
-        uploadZone.addEventListener('click', () => {
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput) {
-                fileInput.click();
-            }
-        });
-    }
 });
 
-// Add new password
 function addPassword() {
-    // Implement modal for adding new, then push to nonSensitiveData and sensitiveData
-    // For example:
     const id = homedit.generateUniqueId();
-    // Collect data from modal...
-    // Example placeholder
     const nonSens = { id, platform: 'New', category: '', url: '' };
     const sens = { username: '', password: generateRandomPassword(), notes: '' };
     homedit.nonSensitiveData.passwords.push(nonSens);
-    storeSensitive(id, sens, homedit.masterKey); // Use helper from homedit
+    storeSensitive(id, sens, homedit.masterKey);
     homedit.sortData(homedit.nonSensitiveData);
     homedit.displayData(homedit.nonSensitiveData, true);
     homedit.populateFilters(homedit.nonSensitiveData);
 }
 
-// Similar for addCard, addWallet...
-
-// Edit item (decrypt, edit, re-encrypt)
 async function editItem(id, type) {
     try {
         let nonSensArray;
@@ -131,9 +94,6 @@ async function editItem(id, type) {
         if (itemIndex === -1) return;
 
         const sens = await decryptItem(homedit.sensitiveData[id], homedit.masterKey);
-        // Show modal with nonSens and sens fields for editing
-        // After save, update nonSensArray[itemIndex] with new non-sens
-        // Re-store sensitive with new sens
         storeSensitive(id, newSens, homedit.masterKey);
         homedit.sortData(homedit.nonSensitiveData);
         homedit.displayData(homedit.nonSensitiveData, true);
@@ -143,9 +103,7 @@ async function editItem(id, type) {
     }
 }
 
-// Delete item
 function deleteItem(id, type) {
-    // Confirm modal
     let array;
     switch (type) {
         case 'password': array = homedit.nonSensitiveData.passwords; break;
@@ -160,7 +118,6 @@ function deleteItem(id, type) {
     homedit.showMessage(`${type} deleted successfully!`, 'success');
 }
 
-// Download file (reconstruct full data by decrypting sensitive)
 async function downloadFile(encrypted) {
     if (!homedit.nonSensitiveData) {
         homedit.showMessage('No data to save', 'error');
@@ -175,13 +132,11 @@ async function downloadFile(encrypted) {
     }
     
     try {
-        // Reconstruct full loadedData
         const fullData = { passwords: [], cards: [], wallets: [] };
         for (const pwd of homedit.nonSensitiveData.passwords) {
             const sens = await decryptItem(homedit.sensitiveData[pwd.id], homedit.masterKey);
             fullData.passwords.push({ ...pwd, ...sens });
         }
-        // Similar for cards and wallets...
 
         let content;
         if (encrypted) {
@@ -208,7 +163,6 @@ async function downloadFile(encrypted) {
     }
 }
 
-// Generate random password
 function generateRandomPassword(length = 16) {
     const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?éèçò°ùà§';
     const array = new Uint8Array(length);

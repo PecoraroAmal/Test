@@ -1,12 +1,10 @@
-// Global variables shared between home and edit
 export let nonSensitiveData = { passwords: [], cards: [], wallets: [] };
 export let sensitiveData = {};
-export let masterKey = null; // Temporarily store derived master key for in-memory decryption
-export let loadedData = null; // For backward compatibility if needed, but prefer separated data
+export let masterKey = null;
+export let loadedData = null;
 export let uploadedFile = null;
 export let uploadedFileName = null;
 
-// Utility functions
 export function generateUniqueId() {
     return 'xxxx-xxxx-xxxx-xxxx'.replace(/[x]/g, () => {
         return (Math.random() * 16 | 0).toString(16);
@@ -49,7 +47,6 @@ export function showMessage(text, type) {
     }, 3000);
 }
 
-// Handles the upload of the selected file
 export function handleFileUpload(event) {
     const files = event.target?.files || event.dataTransfer?.files;
     const file = files?.[0];
@@ -102,7 +99,6 @@ export function handleFileUpload(event) {
     reader.readAsText(file);
 }
 
-// Validates the JSON structure
 export function validateJSONStructure(data) {
     return data && typeof data === 'object' &&
            (data.passwords === undefined || Array.isArray(data.passwords)) &&
@@ -110,7 +106,6 @@ export function validateJSONStructure(data) {
            (data.wallets === undefined || Array.isArray(data.wallets));
 }
 
-// Sorts data alphabetically
 export function sortData(data) {
     if (!data) return;
     data.passwords.sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
@@ -118,7 +113,6 @@ export function sortData(data) {
     data.wallets.sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
 }
 
-// Function to handle section toggling
 export function toggleSection(containerId, button) {
     const container = document.getElementById(containerId);
     if (container) {
@@ -130,7 +124,6 @@ export function toggleSection(containerId, button) {
     }
 }
 
-// Opens the uploaded file, with optional decryption and in-memory separation
 export async function openFile(isEditMode = false) {
     if (!uploadedFile) {
         showMessage('Select a valid JSON file first', 'error');
@@ -158,14 +151,12 @@ export async function openFile(isEditMode = false) {
 
         if (!validateJSONStructure(data)) throw new Error('Invalid JSON structure');
 
-        // Initialize missing sections
         loadedData = {
             passwords: Array.isArray(data.passwords) ? data.passwords : [],
             cards: Array.isArray(data.cards) ? data.cards : [],
             wallets: Array.isArray(data.wallets) ? data.wallets : []
         };
 
-        // If file was plain (no password provided), prompt for optional in-memory protection password
         if (!password) {
             const promptPassword = prompt('Enter an optional password to protect sensitive data in memory (leave blank for no protection):');
             if (promptPassword) {
@@ -173,21 +164,16 @@ export async function openFile(isEditMode = false) {
             }
         }
 
-        // Derive master key if password provided
         if (password) {
             const salt = window.crypto.getRandomValues(new Uint8Array(16));
             masterKey = await deriveKey(password, salt);
-            // Note: For simplicity, we're deriving once and storing masterKey temporarily.
-            // In a real app, consider more secure storage or re-prompting, but JS limits options.
         } else {
-            masterKey = null; // No encryption if no password
+            masterKey = null;
         }
 
-        // Separate data
         nonSensitiveData = { passwords: [], cards: [], wallets: [] };
         sensitiveData = {};
 
-        // Process passwords
         loadedData.passwords.forEach(item => {
             if (!item.id) item.id = generateUniqueId();
             nonSensitiveData.passwords.push({
@@ -204,7 +190,6 @@ export async function openFile(isEditMode = false) {
             storeSensitive(item.id, sens, masterKey);
         });
 
-        // Process cards
         loadedData.cards.forEach(item => {
             if (!item.id) item.id = generateUniqueId();
             nonSensitiveData.cards.push({
@@ -222,7 +207,6 @@ export async function openFile(isEditMode = false) {
             storeSensitive(item.id, sens, masterKey);
         });
 
-        // Process wallets
         loadedData.wallets.forEach(item => {
             if (!item.id) item.id = generateUniqueId();
             nonSensitiveData.wallets.push({
@@ -271,10 +255,8 @@ export async function openFile(isEditMode = false) {
     }
 }
 
-// Helper to store sensitive data (encrypt if masterKey exists)
 async function storeSensitive(id, sensObj, key) {
     if (!key) {
-        // No encryption, store in plain (less secure, but as per user choice)
         sensitiveData[id] = JSON.stringify(sensObj);
         return;
     }
@@ -282,7 +264,6 @@ async function storeSensitive(id, sensObj, key) {
     sensitiveData[id] = encrypted;
 }
 
-// Encrypt single item (adapt from crypto.js)
 async function encryptItem(dataObj, key) {
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encoder = new TextEncoder();
@@ -295,7 +276,6 @@ async function encryptItem(dataObj, key) {
         dataBuffer
     );
 
-    // Combine iv + encrypted (note: salt is per-masterKey, not per-item)
     const result = new Uint8Array(iv.length + encrypted.byteLength);
     result.set(iv, 0);
     result.set(new Uint8Array(encrypted), iv.length);
@@ -303,10 +283,8 @@ async function encryptItem(dataObj, key) {
     return result;
 }
 
-// Decrypt single item
 async function decryptItem(encrypted, key) {
     if (typeof encrypted === 'string') {
-        // Plain, no decryption needed
         return JSON.parse(encrypted);
     }
     const iv = encrypted.slice(0, 12);
@@ -322,14 +300,12 @@ async function decryptItem(encrypted, key) {
     return JSON.parse(decoder.decode(decrypted));
 }
 
-// Displays all data in their respective sections
 export function displayData(data, isEditMode = false) {
     displayPasswords(data.passwords || [], isEditMode);
     displayCards(data.cards || [], isEditMode);
     displayWallets(data.wallets || [], isEditMode);
 }
 
-// Displays passwords (adapted for sensitive separation and edit mode)
 function displayPasswords(items, isEditMode) {
     const container = document.getElementById('passwordContainer');
     if (!container) return;
@@ -418,7 +394,6 @@ function displayPasswords(items, isEditMode) {
     });
 }
 
-// Similar adaptations for displayCards and displayWallets
 function displayCards(items, isEditMode) {
     const container = document.getElementById('cardContainer');
     if (!container) return;
@@ -639,7 +614,6 @@ function displayWallets(items, isEditMode) {
     });
 }
 
-// Handles visibility of sensitive content (decrypt on-demand)
 export async function toggleVisibility(button) {
     const parent = button.closest('.field-container');
     const span = parent?.querySelector('.hidden-content');
@@ -666,7 +640,6 @@ export async function toggleVisibility(button) {
     }
 }
 
-// Copies text to clipboard (decrypt on-demand)
 export async function copyToClipboard(button, field, type) {
     const id = button.closest('.preview-card-item').dataset.id;
     try {
@@ -704,7 +677,6 @@ export function fallbackCopy(text, onSuccess, onError) {
     document.body.removeChild(textarea);
 }
 
-// Filters data based on search inputs and filters (only on non-sensitive)
 export function filterData() {
     const passwordSearchInput = document.getElementById('passwordSearchInput');
     const categoryFilter = document.getElementById('categoryFilter');
@@ -722,7 +694,6 @@ export function filterData() {
     const walletSearch = walletSearchInput.value.toLowerCase();
     const type = typeFilter.value.toLowerCase();
 
-    // Filter passwords (only non-sensitive fields)
     const filteredPasswords = nonSensitiveData.passwords.filter(pwd => {
         const searchMatch = !passwordSearch || 
             pwd.platform.toLowerCase().includes(passwordSearch) ||
@@ -735,7 +706,6 @@ export function filterData() {
         return searchMatch && categoryMatch;
     }).sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
 
-    // Filter cards
     const filteredCards = nonSensitiveData.cards.filter(card => {
         const searchMatch = !cardSearch || 
             card.issuer.toLowerCase().includes(cardSearch) ||
@@ -747,7 +717,6 @@ export function filterData() {
         return searchMatch && circuitMatch;
     }).sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
 
-    // Filter wallets
     const filteredWallets = nonSensitiveData.wallets.filter(wallet => {
         const searchMatch = !walletSearch || 
             wallet.wallet.toLowerCase().includes(walletSearch) ||
@@ -759,12 +728,11 @@ export function filterData() {
         return searchMatch && typeMatch;
     }).sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
 
-    displayPasswords(filteredPasswords, !!document.getElementById('addPasswordBtn')); // Detect edit mode roughly
+    displayPasswords(filteredPasswords, !!document.getElementById('addPasswordBtn'));
     displayCards(filteredCards, !!document.getElementById('addCardBtn'));
     displayWallets(filteredWallets, !!document.getElementById('addWalletBtn'));
 }
 
-// Populates filters
 export function populateFilters(data) {
     populateCategoryFilter(data);
     populateCircuitFilter(data);
@@ -823,4 +791,32 @@ function populateTypeFilter(data) {
         option.textContent = type;
         select.appendChild(option);
     });
+}
+
+export function initUploadZone() {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileUpload);
+    }
+
+    const uploadZone = document.getElementById('uploadZone');
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFileUpload({ target: { files: [file] } });
+        });
+        uploadZone.addEventListener('click', () => {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+            }
+        });
+    }
 }
