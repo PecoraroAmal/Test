@@ -1,3 +1,4 @@
+// Function to derive a cryptographic key from a password
 async function deriveKey(password, salt) {
     const encoder = new TextEncoder();
     const passwordBuffer = encoder.encode(password);
@@ -23,6 +24,7 @@ async function deriveKey(password, salt) {
     );
 }
 
+// Function to encrypt data
 async function encryptData(data, password) {
     const salt = window.crypto.getRandomValues(new Uint8Array(16));
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -38,6 +40,7 @@ async function encryptData(data, password) {
         dataBuffer
     );
     
+    // Combine salt + iv + encrypted data
     const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
     result.set(salt, 0);
     result.set(iv, salt.length);
@@ -46,6 +49,7 @@ async function encryptData(data, password) {
     return arrayBufferToBase64(result);
 }
 
+// Function to decrypt data
 async function decryptData(encryptedData, password) {
     try {
         const data = base64ToArrayBuffer(encryptedData);
@@ -69,6 +73,7 @@ async function decryptData(encryptedData, password) {
     }
 }
 
+// Convert ArrayBuffer to Base64
 function arrayBufferToBase64(buffer) {
     const bytes = new Uint8Array(buffer);
     let binary = '';
@@ -78,6 +83,7 @@ function arrayBufferToBase64(buffer) {
     return window.btoa(binary);
 }
 
+// Convert Base64 to ArrayBuffer
 function base64ToArrayBuffer(base64) {
     const binary = window.atob(base64);
     const bytes = new Uint8Array(binary.length);

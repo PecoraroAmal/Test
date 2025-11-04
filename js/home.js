@@ -1,36 +1,13 @@
-// home.js
-import * as homedit from './homedit.js';
-
+// Initialization when the page loads
 document.addEventListener('DOMContentLoaded', () => {
+    // Event listeners
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {
-        fileInput.addEventListener('change', homedit.handleFileUpload);
+        fileInput.addEventListener('change', handleFileUpload);
     }
-
-    const uploadZone = document.getElementById('uploadZone');
-    if (uploadZone) {
-        uploadZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            uploadZone.classList.add('drag-over');
-        });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-        uploadZone.addEventListener('drop', e => {
-            e.preventDefault();
-            uploadZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) homedit.handleFileUpload({ target: { files: [file] } });
-        });
-        uploadZone.addEventListener('click', () => {
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput) {
-                fileInput.click();
-            }
-        });
-    }
-
     const decryptBtn = document.getElementById('decryptBtn');
     if (decryptBtn) {
-        decryptBtn.addEventListener('click', () => homedit.openFile(false));
+        decryptBtn.addEventListener('click', openFile);
     }
     const passwordSearchInput = document.getElementById('passwordSearchInput');
     if (passwordSearchInput) {
@@ -59,37 +36,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const decryptPassword = document.getElementById('decryptPassword');
     if (decryptPassword) {
         decryptPassword.addEventListener('keypress', e => {
-            if (e.key === 'Enter') homedit.openFile(false);
+            if (e.key === 'Enter') openFile();
         });
     }
 
+    // Handle drag and drop and click for file upload
+    const uploadZone = document.getElementById('uploadZone');
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFileUpload({ target: { files: [file] } });
+        });
+        uploadZone.addEventListener('click', () => {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+            }
+        });
+    }
+
+    // Handle section toggling
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
     if (togglePasswordBtn) {
-        togglePasswordBtn.addEventListener('click', () => homedit.toggleSection('passwordContainer', togglePasswordBtn));
+        togglePasswordBtn.addEventListener('click', () => toggleSection('passwordContainer', togglePasswordBtn));
     }
     const toggleCardBtn = document.getElementById('toggleCardBtn');
     if (toggleCardBtn) {
-        toggleCardBtn.addEventListener('click', () => homedit.toggleSection('cardContainer', toggleCardBtn));
+        toggleCardBtn.addEventListener('click', () => toggleSection('cardContainer', toggleCardBtn));
     }
     const toggleWalletBtn = document.getElementById('toggleWalletBtn');
     if (toggleWalletBtn) {
-        toggleWalletBtn.addEventListener('click', () => homedit.toggleSection('walletContainer', toggleWalletBtn));
+        toggleWalletBtn.addEventListener('click', () => toggleSection('walletContainer', toggleWalletBtn));
     }
 });
 
-function displayData(data, isEditMode = false) {
-    displayPasswords(data.passwords || []);
-    displayCards(data.cards || []);
-    displayWallets(data.wallets || []);
+// Displays all data in their respective sections
+function displayData() {
+    displayPasswords(loadedData.passwords);
+    displayCards(loadedData.cards);
+    displayWallets(loadedData.wallets);
 }
 
-function displayPasswords(items) {
+// Displays passwords in the dedicated section
+function displayPasswords(passwords) {
     const container = document.getElementById('passwordContainer');
     if (!container) return;
 
     container.innerHTML = '';
 
-    if (!items.length) {
+    if (!passwords.length) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-lock"></i>
@@ -98,22 +100,19 @@ function displayPasswords(items) {
         return;
     }
 
-    items.forEach(item => {
+    passwords.forEach(pwd => {
         const card = document.createElement('div');
         card.className = 'preview-card-item';
-        card.dataset.id = item.id;
+        card.dataset.id = pwd.id;
         card.innerHTML = `
-            <h3 class="scrollable-text">${homedit.escapeHtml(item.platform)}</h3>
+            <h3 class="scrollable-text">${escapeHtml(pwd.platform)}</h3>
             <div class="field-container">
                 <label class="field-label">Username</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(pwd.username)}" data-field="username">${escapeHtml(pwd.username || '-')}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'username', 'Username')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.username)}', 'Username')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -124,10 +123,10 @@ function displayPasswords(items) {
                     <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'passwords', '${pwd.id}', 'password')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'password', 'Password')">
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'passwords', '${pwd.id}', 'password', 'Password')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -135,27 +134,29 @@ function displayPasswords(items) {
             <div class="field-container">
                 <label class="field-label">URL</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text">${homedit.escapeHtml(item.url || '-')}</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(pwd.url || '-')}" data-field="url">${escapeHtml(pwd.url || '-')}</span>
                 </div>
-            </div>
-            <div class="field-container">
-                <label class="field-label">Category</label>
-                <div class="content-wrapper">
-                    <span class="scrollable-text">${homedit.escapeHtml(item.category || '-')}</span>
+                <div class="button-group">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.url)}', 'URL')">
+                        <i class="fas fa-copy"></i>
+                    </button>
                 </div>
             </div>
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(pwd.notes || '-')}" data-notes="true">${escapeHtml(pwd.notes || '-')}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'notes', 'Notes')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.notes)}', 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Category</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text" data-value="${escapeHtml(pwd.category || '-')}" data-field="category">${escapeHtml(pwd.category || '-')}</span>
                 </div>
             </div>
         `;
@@ -163,13 +164,14 @@ function displayPasswords(items) {
     });
 }
 
-function displayCards(items) {
+// Displays cards in the dedicated section
+function displayCards(cards) {
     const container = document.getElementById('cardContainer');
     if (!container) return;
 
     container.innerHTML = '';
 
-    if (!items.length) {
+    if (!cards.length) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-credit-card"></i>
@@ -178,36 +180,36 @@ function displayCards(items) {
         return;
     }
 
-    items.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'preview-card-item';
-        card.dataset.id = item.id;
-        card.innerHTML = `
-            <h3 class="scrollable-text">${homedit.escapeHtml(item.issuer)}</h3>
+    cards.forEach(card => {
+        const cardElem = document.createElement('div');
+        cardElem.className = 'preview-card-item';
+        cardElem.dataset.id = card.id;
+        cardElem.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(card.issuer)}</h3>
             <div class="field-container">
                 <label class="field-label">PAN</label>
                 <div class="content-wrapper">
                     <span class="hidden-content scrollable-text" data-field="pan">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'cards', '${card.id}', 'pan')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'pan', 'PAN')">
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'cards', '${card.id}', 'pan', 'PAN')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
             </div>
             <div class="field-container">
-                <label class="field-label">Expiry</label>
+                <label class="field-label">Expiry Date</label>
                 <div class="content-wrapper">
                     <span class="hidden-content scrollable-text" data-field="expiryDate">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'cards', '${card.id}', 'expiryDate')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'expiryDate', 'Expiry Date')">
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'cards', '${card.id}', 'expiryDate', 'Expiry Date')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -218,10 +220,10 @@ function displayCards(items) {
                     <span class="hidden-content scrollable-text" data-field="cvv">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'cards', '${card.id}', 'cvv')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'cvv', 'CVV')">
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'cards', '${card.id}', 'cvv', 'CVV')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -232,10 +234,10 @@ function displayCards(items) {
                     <span class="hidden-content scrollable-text" data-field="pin">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'cards', '${card.id}', 'pin')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'pin', 'PIN')">
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'cards', '${card.id}', 'pin', 'PIN')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -243,35 +245,33 @@ function displayCards(items) {
             <div class="field-container">
                 <label class="field-label">Network</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text">${homedit.escapeHtml(item.network || '-')}</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(card.network || '-')}" data-field="network">${escapeHtml(card.network || '-')}</span>
                 </div>
             </div>
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(card.notes || '-')}" data-notes="true">${escapeHtml(card.notes || '-')}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'notes', 'Notes')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(card.notes)}', 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
             </div>
         `;
-        container.appendChild(card);
+        container.appendChild(cardElem);
     });
 }
 
-function displayWallets(items) {
+// Displays wallets in the dedicated section
+function displayWallets(wallets) {
     const container = document.getElementById('walletContainer');
     if (!container) return;
 
     container.innerHTML = '';
 
-    if (!items.length) {
+    if (!wallets.length) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-wallet"></i>
@@ -280,22 +280,19 @@ function displayWallets(items) {
         return;
     }
 
-    items.forEach(item => {
+    wallets.forEach(wallet => {
         const card = document.createElement('div');
         card.className = 'preview-card-item';
-        card.dataset.id = item.id;
+        card.dataset.id = wallet.id;
         card.innerHTML = `
-            <h3 class="scrollable-text">${homedit.escapeHtml(item.wallet)}</h3>
+            <h3 class="scrollable-text">${escapeHtml(wallet.wallet)}</h3>
             <div class="field-container">
                 <label class="field-label">Username</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(wallet.username || '-')}" data-field="username">${escapeHtml(wallet.username || '-')}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'username', 'Username')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.username)}', 'Username')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -306,10 +303,10 @@ function displayWallets(items) {
                     <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'wallets', '${wallet.id}', 'password')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'password', 'Password')">
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'wallets', '${wallet.id}', 'password', 'Password')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -320,10 +317,10 @@ function displayWallets(items) {
                     <span class="hidden-content scrollable-text" data-field="key">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'wallets', '${wallet.id}', 'key')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'key', 'Key')">
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'wallets', '${wallet.id}', 'key', 'Key')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -331,13 +328,21 @@ function displayWallets(items) {
             <div class="field-container">
                 <label class="field-label">Address</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-field="address">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(wallet.address || '-')}" data-field="address">${escapeHtml(wallet.address || '-')}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.address)}', 'Address')">
+                        <i class="fas fa-copy"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'address', 'Address')">
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text" data-value="${escapeHtml(wallet.notes || '-')}" data-notes="true">${escapeHtml(wallet.notes || '-')}</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.notes)}', 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -345,21 +350,7 @@ function displayWallets(items) {
             <div class="field-container">
                 <label class="field-label">Type</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text">${homedit.escapeHtml(item.type || '-')}</span>
-                </div>
-            </div>
-            <div class="field-container">
-                <label class="field-label">Notes</label>
-                <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="homedit.toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="homedit.copyToClipboard(this, 'notes', 'Notes')">
-                        <i class="fas fa-copy"></i>
-                    </button>
+                    <span class="scrollable-text" data-value="${escapeHtml(wallet.type || '-')}" data-field="type">${escapeHtml(wallet.type || '-')}</span>
                 </div>
             </div>
         `;
@@ -367,58 +358,41 @@ function displayWallets(items) {
     });
 }
 
-function filterData() {
-    const passwordSearchInput = document.getElementById('passwordSearchInput');
-    const categoryFilter = document.getElementById('categoryFilter');
-    const cardSearchInput = document.getElementById('cardSearchInput');
-    const circuitFilter = document.getElementById('circuitFilter');
-    const walletSearchInput = document.getElementById('walletSearchInput');
-    const typeFilter = document.getElementById('typeFilter');
+// Handles visibility of sensitive content
+async function toggleVisibility(button, type, id, field) {
+    const parent = button.closest('.field-container');
+    const span = parent?.querySelector('.hidden-content');
+    if (!span) return;
 
-    if (!passwordSearchInput || !categoryFilter || !cardSearchInput || !circuitFilter || !walletSearchInput || !typeFilter) return;
+    const isHidden = span.textContent === '••••••••••••';
 
-    const passwordSearch = passwordSearchInput.value.toLowerCase();
-    const category = categoryFilter.value.toLowerCase();
-    const cardSearch = cardSearchInput.value.toLowerCase();
-    const circuit = circuitFilter.value.toLowerCase();
-    const walletSearch = walletSearchInput.value.toLowerCase();
-    const type = typeFilter.value.toLowerCase();
+    if (isHidden) {
+        const sensitive = await decryptSensitive(sensitiveData[type][id], sessionKey);
+        const value = sensitive[field] || '-';
+        span.textContent = value;
+        span.dataset.value = value;
+        button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+    } else {
+        span.textContent = '••••••••••••';
+        delete span.dataset.value;
+        button.innerHTML = '<i class="fas fa-eye"></i>';
+    }
+}
 
-    const filteredPasswords = homedit.nonSensitiveData.passwords.filter(pwd => {
-        const searchMatch = !passwordSearch || 
-            pwd.platform.toLowerCase().includes(passwordSearch) ||
-            (pwd.url && pwd.url.toLowerCase().includes(passwordSearch)) ||
-            (pwd.category && pwd.category.toLowerCase().includes(passwordSearch));
+// Copies sensitive text to clipboard
+async function copySensitive(button, type, id, field, label) {
+    const sensitive = await decryptSensitive(sensitiveData[type][id], sessionKey);
+    const text = sensitive[field] || '-';
+    if (text === '-') return;
+    navigator.clipboard.writeText(text)
+        .then(() => showMessage(`${label} copied to clipboard!`, 'success'))
+        .catch(() => showMessage('Error during copying', 'error'));
+}
 
-        const categoryMatch = !category || 
-            (pwd.category && pwd.category.toLowerCase() === category);
-
-        return searchMatch && categoryMatch;
-    }).sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
-
-    const filteredCards = homedit.nonSensitiveData.cards.filter(card => {
-        const searchMatch = !cardSearch || 
-            card.issuer.toLowerCase().includes(cardSearch) ||
-            (card.network && card.network.toLowerCase().includes(cardSearch));
-
-        const circuitMatch = !circuit || 
-            (card.network && card.network.toLowerCase() === circuit);
-
-        return searchMatch && circuitMatch;
-    }).sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
-
-    const filteredWallets = homedit.nonSensitiveData.wallets.filter(wallet => {
-        const searchMatch = !walletSearch || 
-            wallet.wallet.toLowerCase().includes(walletSearch) ||
-            (wallet.type && wallet.type.toLowerCase().includes(walletSearch));
-
-        const typeMatch = !type || 
-            (wallet.type && wallet.type.toLowerCase() === type);
-
-        return searchMatch && typeMatch;
-    }).sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
-
-    displayPasswords(filteredPasswords);
-    displayCards(filteredCards);
-    displayWallets(filteredWallets);
+// Copies non-sensitive text to clipboard
+function copyToClipboard(text, label) {
+    if (text === '-' || !text) return;
+    navigator.clipboard.writeText(text)
+        .then(() => showMessage(`${label} copied to clipboard!`, 'success'))
+        .catch(() => showMessage('Error during copying', 'error'));
 }
