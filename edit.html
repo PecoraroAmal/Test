@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test™ - Edit</title>
+    <link rel="stylesheet" href="css/style.css?v=3.18">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous">
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <link rel="icon" sizes="192x192" href="assets/android-icon.png">
+    <link rel="icon" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" sizes="16x16" href="assets/favicon-16x16.png">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fa-solid fa-pen-to-square"></i>
+                Test™
+            </div>
+            <div class="nav-links">
+                <a href="index.html?v=3.18" class="nav-link">Home</a>
+                <a href="edit.html?v=3.18" class="nav-link active">Edit</a>
+                <a href="info.html?v=3.18" class="nav-link">Info</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <section class="upload-section">
+                <h2>Upload Your File</h2>
+                <div class="form-card">
+                    <div class="upload-zone" id="uploadZone">
+                        <input type="file" id="fileInput" accept=".json">
+                        <p>Drag your JSON file here or click to select it</p>
+                        <p class="file-name"></p>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="decryptPassword">Decryption Password</label>
+                            <input type="password" id="decryptPassword" class="input-field" placeholder="Enter the password">
+                        </div>
+                    </div>
+                    <div class="btn-container">
+                        <button class="btn btn-primary" id="decryptBtn">
+                            <i class="fas fa-unlock"></i> Open File
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="edit-section">
+                <h2>Passwords</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="passwordSearchInput">Search Passwords</label>
+                        <input type="text" id="passwordSearchInput" class="search-input" placeholder="Search by platform, username...">
+                    </div>
+                    <div class="form-group">
+                        <label for="categoryFilter">Filter by Category</label>
+                        <select id="categoryFilter" class="select-field">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button class="btn btn-primary" id="addPasswordBtn">
+                        <i class="fas fa-plus"></i> Add Password
+                    </button>
+                </div>
+                <button class="toggle-btn" id="togglePasswordBtn">
+                    <i class="fas fa-eye-slash"></i> Hide Passwords
+                </button>
+                <div id="passwordContainer" class="preview-card">
+                    <div class="empty-state">
+                        <i class="fas fa-lock"></i>
+                        <p>No passwords saved</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="edit-section">
+                <h2>Cards</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cardSearchInput">Search Cards</label>
+                        <input type="text" id="cardSearchInput" class="search-input" placeholder="Search by issuer, PAN...">
+                    </div>
+                    <div class="form-group">
+                        <label for="circuitFilter">Filter by Network</label>
+                        <select id="circuitFilter" class="select-field">
+                            <option value="">All Networks</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button class="btn btn-primary" id="addCardBtn">
+                        <i class="fas fa-plus"></i> Add Card
+                    </button>
+                </div>
+                <button class="toggle-btn" id="toggleCardBtn">
+                    <i class="fas fa-eye-slash"></i> Hide Cards
+                </button>
+                <div id="cardContainer" class="preview-card">
+                    <div class="empty-state">
+                        <i class="fas fa-credit-card"></i>
+                        <p>No cards saved</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="edit-section">
+                <h2>Wallets</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="walletSearchInput">Search Wallets</label>
+                        <input type="text" id="walletSearchInput" class="search-input" placeholder="Search by wallet, address...">
+                    </div>
+                    <div class="form-group">
+                        <label for="typeFilter">Filter by Type</label>
+                        <select id="typeFilter" class="select-field">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button class="btn btn-primary" id="addWalletBtn">
+                        <i class="fas fa-plus"></i> Add Wallet
+                    </button>
+                </div>
+                <button class="toggle-btn" id="toggleWalletBtn">
+                    <i class="fas fa-eye-slash"></i> Hide Wallets
+                </button>
+                <div id="walletContainer" class="preview-card">
+                    <div class="empty-state">
+                        <i class="fas fa-wallet"></i>
+                        <p>No wallets saved</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="download-section">
+                <h2>Save File</h2>
+                <div class="form-card">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="encryptPassword">Encryption Password</label>
+                            <input type="password" id="encryptPassword" class="input-field" placeholder="Enter a password (minimum 8 characters)">
+                        </div>
+                    </div>
+                    <div class="btn-container">
+                        <button class="btn btn-primary" id="downloadPlainBtn">
+                            <i class="fas fa-download"></i> Download Unencrypted
+                        </button>
+                        <button class="btn btn-primary" id="downloadEncryptedBtn">
+                            <i class="fas fa-lock"></i> Download Encrypted
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Test™ - Privacy First</p>
+            <p>This site does not store or transmit any personal data. All uploaded data remains solely in the user's browser and is deleted when the page is closed.</p>
+            <p>
+                <a href="https://www.paypal.com/donate/?hosted_button_id=5Z5N9EBJERXC6" target="_blank" class="donation-button">
+                    Support the Project
+                </a>
+            </p>
+            <p class="donation-note">
+                The donation is <strong>completely voluntary</strong> and <strong>does not grant access to additional features</strong>. It is solely to support the project.
+            </p>
+            <div class="social-links">
+                <p class="social-label">Follow us:</p>
+                <a href="https://www.facebook.com/profile.php?id=61582398389771" target="_blank" class="social-link">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a href="https://www.instagram.com/Testofficial/" target="_blank" class="social-link">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href="https://www.linkedin.com/company/Test%E2%84%A2/?viewAsMember=true" target="_blank" class="social-link">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+                <a href="https://x.com/TestTM" target="_blank" class="social-link">
+                    <i class="fab fa-x-twitter"></i>
+                </a>
+            </div>
+            <p>
+                <a href="cookie-policy.html?v=3.18">Cookie Policy</a> |
+                <a href="privacy-policy.html?v=3.18">Privacy Policy</a>
+            </p>
+        </div>
+        <p>Test™: 3.18</p>
+    </footer>
+
+    <script src="/Test/js/crypto.js?v=3.18"></script>
+    <script src="/Test/js/edit.js?v=3.18"></script>
+</body>
+</html>

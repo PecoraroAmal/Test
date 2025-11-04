@@ -1,0 +1,79 @@
+/* Styles for Cookie Policy and Privacy Policy pages */
+.policy-section {
+    background: var(--card-bg, white);
+    padding: 20px;
+    border-radius: var(--border-radius, 8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.policy-section h2 {
+    font-size: 1.8rem;
+    color: var(--primary-color, #333);
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.policy-section h3 {
+    font-size: 1.4rem;
+    color: var(--primary-color, #333);
+    margin: 20px 0 10px;
+    font-weight: 600;
+}
+
+.policy-section p {
+    font-size: 1rem;
+    color: var(--text-color, #333);
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.policy-section ul {
+    padding-left: 20px;
+    margin-bottom: 15px;
+}
+
+.policy-section ul li {
+    font-size: 1rem;
+    color: var(--text-color, #333);
+    margin-bottom: 10px;
+}
+
+.policy-section a {
+    color: var(--success, #28a745);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.policy-section a:hover {
+    color: var(--success-dark, #218838);
+    text-decoration: underline;
+}
+
+.policy-section code {
+    background: var(--code-bg, #f0f0f0);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+    .policy-section {
+        padding: 15px;
+        margin: 10px;
+    }
+
+    .policy-section h2 {
+        font-size: 1.4rem;
+    }
+
+    .policy-section h3 {
+        font-size: 1.2rem;
+    }
+
+    .policy-section p,
+    .policy-section ul li {
+        font-size: 0.9rem;
+    }
+}

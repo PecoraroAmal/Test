@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pecoraroamal.github.io/Test/sitemap.xml
