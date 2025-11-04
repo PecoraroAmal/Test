@@ -41,19 +41,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Handle drag and drop and click for file upload
+    // Handle drag and drop and click for file upload (con debug logs)
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
         uploadZone.addEventListener('dragover', e => {
             e.preventDefault();
             uploadZone.classList.add('drag-over');
+            console.log('Drag over uploadZone'); // Debug
         });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+            console.log('Drag leave uploadZone'); // Debug
+        });
         uploadZone.addEventListener('drop', e => {
             e.preventDefault();
             uploadZone.classList.remove('drag-over');
             const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload({ target: { files: [file] } });
+            if (file) {
+                console.log('File dropped:', file.name); // Debug
+                handleFileUpload({ target: { files: [file] } });
+            } else {
+                console.warn('No file in drop event'); // Debug
+            }
         });
         uploadZone.addEventListener('click', () => {
             const fileInput = document.getElementById('fileInput');

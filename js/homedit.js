@@ -68,6 +68,7 @@ function handleFileUpload(event) {
 }
 
 // Open file (shared, with separation of sensitive data)
+// Aggiunto check per vecchi file encrypted senza password
 async function openFile(isEditMode = false) {
     if (!uploadedFile) {
         showMessage('Select a valid JSON file first', 'error');
@@ -84,10 +85,23 @@ async function openFile(isEditMode = false) {
     try {
         let data;
         try {
-            data = password ? 
-                await decryptData(uploadedFile, password) : 
-                JSON.parse(uploadedFile);
+            if (!password) {
+                // Prova prima a parse come JSON plain
+                try {
+                    data = JSON.parse(uploadedFile);
+                } catch (parseErr) {
+                    // Se fallisce parse e sembra base64/encrypted, suggerisci password
+                    if (uploadedFile.trim().match(/^[A-Za-z0-9+/=]+$/)) {
+                        throw new Error('File seems encrypted. Please enter the password to decrypt.');
+                    } else {
+                        throw parseErr;
+                    }
+                }
+            } else {
+                data = await decryptData(uploadedFile, password);
+            }
         } catch (e) {
+            console.error('Parsing/decrypting error:', e);
             throw new Error('Error parsing or decrypting JSON: ' + e.message);
         }
         
@@ -106,7 +120,7 @@ async function openFile(isEditMode = false) {
         loadedSensitiveData.clear();
         
         // Process passwords
-        (Array.isArray(data.passwords) ? data.passwords : []).forEach(pwd => {
+        (Array.isArray(data.passwords) ? data.passwords : []).forEach(async pwd => {
             const id = pwd.id || generateUniqueId();
             const publicPwd = {
                 id,
@@ -120,11 +134,11 @@ async function openFile(isEditMode = false) {
                 notes: pwd.notes || ''
             };
             loadedPublicData.passwords.push(publicPwd);
-            loadedSensitiveData.set(id, encryptSensitive(sensitivePwd, sessionKey));
+            loadedSensitiveData.set(id, await encryptSensitive(sensitivePwd, sessionKey)); // Await per async
         });
         
         // Process cards
-        (Array.isArray(data.cards) ? data.cards : []).forEach(card => {
+        (Array.isArray(data.cards) ? data.cards : []).forEach(async card => {
             const id = card.id || generateUniqueId();
             const publicCard = {
                 id,
@@ -139,11 +153,11 @@ async function openFile(isEditMode = false) {
                 notes: card.notes || ''
             };
             loadedPublicData.cards.push(publicCard);
-            loadedSensitiveData.set(id, encryptSensitive(sensitiveCard, sessionKey));
+            loadedSensitiveData.set(id, await encryptSensitive(sensitiveCard, sessionKey));
         });
         
         // Process wallets
-        (Array.isArray(data.wallets) ? data.wallets : []).forEach(wallet => {
+        (Array.isArray(data.wallets) ? data.wallets : []).forEach(async wallet => {
             const id = wallet.id || generateUniqueId();
             const publicWallet = {
                 id,
@@ -158,7 +172,7 @@ async function openFile(isEditMode = false) {
                 notes: wallet.notes || ''
             };
             loadedPublicData.wallets.push(publicWallet);
-            loadedSensitiveData.set(id, encryptSensitive(sensitiveWallet, sessionKey));
+            loadedSensitiveData.set(id, await encryptSensitive(sensitiveWallet, sessionKey));
         });
         
         sortData();
@@ -227,6 +241,7 @@ function displayData(isEditMode = false) {
 }
 
 // Display passwords (shared, decrypt on demand, editable if isEditMode)
+// Riordinato: Username > Password > Notes > URL > Category
 function displayPasswords(passwords, isEditMode) {
     const container = document.getElementById('passwordContainer');
     if (!container) return;
@@ -279,17 +294,6 @@ function displayPasswords(passwords, isEditMode) {
                 </div>
             </div>
             <div class="field-container">
-                <label class="field-label">URL</label>
-                <div class="content-wrapper">
-                    <span class="scrollable-text">${escapeHtml(pwd.url || '-')}</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.url}', 'URL')">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
                     <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
@@ -299,6 +303,17 @@ function displayPasswords(passwords, isEditMode) {
                         <i class="fas fa-eye"></i>
                     </button>
                     <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">URL</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(pwd.url || '-')}</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.url}', 'URL')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -314,7 +329,7 @@ function displayPasswords(passwords, isEditMode) {
     });
 }
 
-// Similar for displayCards and displayWallets (adapted similarly with decrypt on demand and isEditMode)
+// Display cards (unchanged)
 function displayCards(cards, isEditMode) {
     const container = document.getElementById('cardContainer');
     if (!container) return;
@@ -419,6 +434,7 @@ function displayCards(cards, isEditMode) {
     });
 }
 
+// Display wallets (unchanged)
 function displayWallets(wallets, isEditMode) {
     const container = document.getElementById('walletContainer');
     if (!container) return;

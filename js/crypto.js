@@ -1,6 +1,6 @@
 // crypto.js - Updated with Argon2 and sensitive data functions
 
-// Function to derive a key with PBKDF2 (fallback and for sensitive)
+// Function to derive a key with PBKDF2 (fallback and for file decryption, 1M iterations)
 async function deriveKey(password, salt) {
     const encoder = new TextEncoder();
     const passwordBuffer = encoder.encode(password);
@@ -16,7 +16,7 @@ async function deriveKey(password, salt) {
         {
             name: 'PBKDF2',
             salt: salt,
-            iterations: 1000000,
+            iterations: 1000000, // Mantieni 1M per retrocompatibilità file vecchi
             hash: 'SHA-256'
         },
         keyMaterial,
@@ -47,9 +47,30 @@ async function deriveKeyArgon2(password, salt) {
     );
 }
 
-// Derive key for sensitive data (PBKDF2)
+// Derive key for sensitive data (PBKDF2 con 100k iterations per velocità)
 async function deriveKeySensitive(password, salt) {
-    return deriveKey(password, salt); // Uses PBKDF2 with 1M iterations
+    const encoder = new TextEncoder();
+    const passwordBuffer = encoder.encode(password);
+    const keyMaterial = await window.crypto.subtle.importKey(
+        'raw',
+        passwordBuffer,
+        'PBKDF2',
+        false,
+        ['deriveBits', 'deriveKey']
+    );
+    
+    return window.crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000, // Ridotto a 100k per sensibili in memoria
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
 }
 
 // Function to encrypt data (uses Argon2, adds tag)
@@ -107,22 +128,20 @@ async function decryptData(encryptedData, password) {
 }
 
 // Encrypt sensitive object (per ID, uses sessionKey)
-function encryptSensitive(dataObj, sessionKey) {
-    // Similar to encryptData but for small obj, return base64 directly
+async function encryptSensitive(dataObj, sessionKey) {  // Rendi async per consistency
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encoder = new TextEncoder();
     const dataBuffer = encoder.encode(JSON.stringify(dataObj));
     
-    return window.crypto.subtle.encrypt(
+    const encrypted = await window.crypto.subtle.encrypt(
         { name: 'AES-GCM', iv: iv },
         sessionKey,
         dataBuffer
-    ).then(encrypted => {
-        const result = new Uint8Array(iv.length + encrypted.byteLength);
-        result.set(iv, 0);
-        result.set(new Uint8Array(encrypted), iv.length);
-        return arrayBufferToBase64(result);
-    });
+    );
+    const result = new Uint8Array(iv.length + encrypted.byteLength);
+    result.set(iv, 0);
+    result.set(new Uint8Array(encrypted), iv.length);
+    return arrayBufferToBase64(result);
 }
 
 // Decrypt sensitive (per ID)
