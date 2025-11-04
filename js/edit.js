@@ -1,3 +1,4 @@
+// edit.js
 import * as homedit from './homedit.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -140,6 +141,8 @@ async function editItem(id, type) {
         if (itemIndex === -1) return;
 
         const sens = await decryptItem(homedit.sensitiveData[id], homedit.masterKey);
+        // Implementa modal per edit, poi aggiorna nonSensArray[itemIndex] e ri-critta sens
+        // Esempio placeholder: assumi newSens aggiornato dal modal
         storeSensitive(id, newSens, homedit.masterKey);
         homedit.sortData(homedit.nonSensitiveData);
         displayData(homedit.nonSensitiveData, true);
@@ -183,13 +186,13 @@ async function downloadFile(encrypted) {
             const sens = await decryptItem(homedit.sensitiveData[pwd.id], homedit.masterKey);
             fullData.passwords.push({ ...pwd, ...sens });
         }
-        for (const crd of homedit.nonSensitiveData.cards) {
-            const sens = await decryptItem(homedit.sensitiveData[crd.id], homedit.masterKey);
-            fullData.cards.push({ ...crd, ...sens });
+        for (const card of homedit.nonSensitiveData.cards) {
+            const sens = await decryptItem(homedit.sensitiveData[card.id], homedit.masterKey);
+            fullData.cards.push({ ...card, ...sens });
         }
-        for (const wlt of homedit.nonSensitiveData.wallets) {
-            const sens = await decryptItem(homedit.sensitiveData[wlt.id], homedit.masterKey);
-            fullData.wallets.push({ ...wlt, ...sens });
+        for (const wallet of homedit.nonSensitiveData.wallets) {
+            const sens = await decryptItem(homedit.sensitiveData[wallet.id], homedit.masterKey);
+            fullData.wallets.push({ ...wallet, ...sens });
         }
 
         let content;

@@ -1,3 +1,4 @@
+// home.js
 import * as homedit from './homedit.js';
 
 document.addEventListener('DOMContentLoaded', () => {
