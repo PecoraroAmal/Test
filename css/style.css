@@ -215,7 +215,7 @@ h2 {
 }
 
 .preview-card-item h3 {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     margin-bottom: 16px;
 }
 
@@ -335,7 +335,7 @@ h2 {
     background: none;
     border: none;
     color: var(--secondary-color);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     cursor: pointer;
 }
 
@@ -380,7 +380,7 @@ h2 {
 }
 
 .toggle-btn i {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 /* Stati vuoti e messaggi informativi */
@@ -428,7 +428,7 @@ h2 {
 
 .modal-content p {
     margin-bottom: 24px;
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     color: var(--text-color);
 }
 
@@ -536,7 +536,7 @@ h2 {
     font-size: 24px;
 }
 
-/* GitHub button in info.html?v=1.4 footer */
+/* GitHub button in info.html?v=1.5 footer */
 .btn.btn-primary i.fab.fa-github {
     margin-right: 10px;
     font-size: 24px;
@@ -721,7 +721,7 @@ h2 {
 .warning-note h4 {
     color: var(--danger);
     margin-bottom: var(--spacing-sm);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .warning-note ul {
@@ -799,7 +799,7 @@ h2 {
 .requirement-item h4 {
     color: var(--primary-color);
     margin-bottom: var(--spacing-xs);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .requirement-item p {
@@ -813,7 +813,7 @@ h2 {
     border-radius: var(--border-radius);
     margin: var(--spacing-lg) 0;
     font-family: 'Fira Code', monospace;
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     color: var(--text-primary);
     display: flex;
     align-items: center;
@@ -840,7 +840,7 @@ h2 {
 
 .master-password-note i {
     color: var(--success);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .tip {
@@ -856,7 +856,7 @@ h2 {
 
 .tip i {
     color: var(--warning);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .tip strong {
@@ -922,7 +922,7 @@ h2 {
 }
 
 .workflow-option h3 {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     margin-bottom: var(--spacing-md);
     color: var(--primary-color);
 }
@@ -951,13 +951,13 @@ h2 {
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .workflow-item h4 {
     color: var(--primary-color);
     margin-bottom: var(--spacing-sm);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .workflow-item:not(:last-child)::after {
@@ -1052,11 +1052,11 @@ h2 {
     gap: var(--spacing-md);
     color: var(--primary-color);
     margin-bottom: var(--spacing-md);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .faq-item h4 i {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .faq-item p {
@@ -1085,7 +1085,7 @@ h2 {
 
 .future-features li i {
     color: var(--primary-color);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
 }
 
 .feature-comparison {
@@ -1105,7 +1105,7 @@ h2 {
 
 .feature-comparison li i {
     color: var(--primary-color);
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     width: 24px;
     text-align: center;
 }
@@ -1151,7 +1151,7 @@ h2 {
     }
 
     .nav-logo {
-        font-size: 1.4rem;
+        font-size: 1.5rem;
     }
 
     .nav-links {

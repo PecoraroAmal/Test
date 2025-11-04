@@ -46,15 +46,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (uploadZone) {
         uploadZone.addEventListener('dragover', e => {
             e.preventDefault();
+            e.stopPropagation();
             uploadZone.classList.add('drag-over');
             console.log('Drag over uploadZone'); // Debug
         });
-        uploadZone.addEventListener('dragleave', () => {
+        uploadZone.addEventListener('dragleave', e => {
+            e.preventDefault();
+            e.stopPropagation();
             uploadZone.classList.remove('drag-over');
             console.log('Drag leave uploadZone'); // Debug
         });
         uploadZone.addEventListener('drop', e => {
             e.preventDefault();
+            e.stopPropagation();
             uploadZone.classList.remove('drag-over');
             const file = e.dataTransfer.files[0];
             if (file) {

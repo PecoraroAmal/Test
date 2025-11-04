@@ -1,7 +1,7 @@
 {
   "name": "Test™",
   "short_name": "Test",
-  "start_url": "/Test/index.html?v=1.4",
+  "start_url": "/Test/index.html?v=1.5",
   "display": "standalone",
   "background_color": "#f8f9fa",
   "theme_color": "#339966",

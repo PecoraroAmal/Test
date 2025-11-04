@@ -1,4 +1,4 @@
-// Shared functions for home.js and edit.js
+// homedit.js - Shared functions for home.js and edit.js
 
 // Global variables
 let loadedPublicData = { passwords: [], cards: [], wallets: [] };
@@ -120,7 +120,7 @@ async function openFile(isEditMode = false) {
         loadedSensitiveData.clear();
         
         // Process passwords
-        (Array.isArray(data.passwords) ? data.passwords : []).forEach(async pwd => {
+        (Array.isArray(data.passwords) ? data.passwords : []).forEach(async (pwd) => {
             const id = pwd.id || generateUniqueId();
             const publicPwd = {
                 id,
@@ -134,11 +134,11 @@ async function openFile(isEditMode = false) {
                 notes: pwd.notes || ''
             };
             loadedPublicData.passwords.push(publicPwd);
-            loadedSensitiveData.set(id, await encryptSensitive(sensitivePwd, sessionKey)); // Await per async
+            loadedSensitiveData.set(id, await encryptSensitive(sensitivePwd, sessionKey));
         });
         
         // Process cards
-        (Array.isArray(data.cards) ? data.cards : []).forEach(async card => {
+        (Array.isArray(data.cards) ? data.cards : []).forEach(async (card) => {
             const id = card.id || generateUniqueId();
             const publicCard = {
                 id,
@@ -157,7 +157,7 @@ async function openFile(isEditMode = false) {
         });
         
         // Process wallets
-        (Array.isArray(data.wallets) ? data.wallets : []).forEach(async wallet => {
+        (Array.isArray(data.wallets) ? data.wallets : []).forEach(async (wallet) => {
             const id = wallet.id || generateUniqueId();
             const publicWallet = {
                 id,
@@ -233,16 +233,21 @@ function toggleSection(containerId, button) {
     }
 }
 
-// Display data (shared, with isEditMode for editable UI)
+// Display data (shared, calls specific read-only or edit versions)
 function displayData(isEditMode = false) {
-    displayPasswords(loadedPublicData.passwords, isEditMode);
-    displayCards(loadedPublicData.cards, isEditMode);
-    displayWallets(loadedPublicData.wallets, isEditMode);
+    if (isEditMode) {
+        displayPasswordsEdit(loadedPublicData.passwords);
+        displayCardsEdit(loadedPublicData.cards);
+        displayWalletsEdit(loadedPublicData.wallets);
+    } else {
+        displayPasswordsReadOnly(loadedPublicData.passwords);
+        displayCardsReadOnly(loadedPublicData.cards);
+        displayWalletsReadOnly(loadedPublicData.wallets);
+    }
 }
 
-// Display passwords (shared, decrypt on demand, editable if isEditMode)
-// Riordinato: Username > Password > Notes > URL > Category
-function displayPasswords(passwords, isEditMode) {
+// Display passwords read-only (no edit/delete buttons, decrypt on demand)
+function displayPasswordsReadOnly(passwords) {
     const container = document.getElementById('passwordContainer');
     if (!container) return;
 
@@ -275,8 +280,6 @@ function displayPasswords(passwords, isEditMode) {
                     <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'username')">
                         <i class="fas fa-copy"></i>
                     </button>
-                    ${isEditMode ? `<button class="btn btn-icon edit-btn" onclick="editItem('${pwd.id}', 'password')"><i class="fas fa-edit"></i></button>` : ''}
-                    ${isEditMode ? `<button class="btn btn-icon delete-btn" onclick="deleteItem('${pwd.id}', 'password')"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div>
             <div class="field-container">
@@ -329,8 +332,96 @@ function displayPasswords(passwords, isEditMode) {
     });
 }
 
-// Display cards (unchanged)
-function displayCards(cards, isEditMode) {
+// Display passwords edit (with edit/delete buttons)
+function displayPasswordsEdit(passwords) {
+    const container = document.getElementById('passwordContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!passwords.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-lock"></i>
+                <p>No passwords saved</p>
+            </div>`;
+        return;
+    }
+
+    passwords.forEach(pwd => {
+        const card = document.createElement('div');
+        card.className = 'preview-card-item';
+        card.dataset.id = pwd.id;
+        card.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(pwd.platform)}</h3>
+            <div class="field-container">
+                <label class="field-label">Username</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'username')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-icon edit-btn" onclick="editItem('${pwd.id}', 'password')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-icon delete-btn" onclick="deleteItem('${pwd.id}', 'password')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Password</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'password')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${pwd.id}', 'passwords')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.id}', 'passwords', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">URL</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(pwd.url || '-')}</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${pwd.url}', 'URL')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Category</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(pwd.category || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// Display cards read-only
+function displayCardsReadOnly(cards) {
     const container = document.getElementById('cardContainer');
     if (!container) return;
 
@@ -363,8 +454,6 @@ function displayCards(cards, isEditMode) {
                     <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'pan')">
                         <i class="fas fa-copy"></i>
                     </button>
-                    ${isEditMode ? `<button class="btn btn-icon edit-btn" onclick="editItem('${card.id}', 'card')"><i class="fas fa-edit"></i></button>` : ''}
-                    ${isEditMode ? `<button class="btn btn-icon delete-btn" onclick="deleteItem('${card.id}', 'card')"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div>
             <div class="field-container">
@@ -434,8 +523,113 @@ function displayCards(cards, isEditMode) {
     });
 }
 
-// Display wallets (unchanged)
-function displayWallets(wallets, isEditMode) {
+// Display cards edit
+function displayCardsEdit(cards) {
+    const container = document.getElementById('cardContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!cards.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-credit-card"></i>
+                <p>No cards saved</p>
+            </div>`;
+        return;
+    }
+
+    cards.forEach(card => {
+        const item = document.createElement('div');
+        item.className = 'preview-card-item';
+        item.dataset.id = card.id;
+        item.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(card.issuer)}</h3>
+            <div class="field-container">
+                <label class="field-label">PAN</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="pan">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'pan')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-icon edit-btn" onclick="editItem('${card.id}', 'card')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-icon delete-btn" onclick="deleteItem('${card.id}', 'card')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Expiry</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="expiryDate">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'expiryDate')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">CVV</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="cvv">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'cvv')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">PIN</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="pin">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'pin')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${card.id}', 'cards')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${card.id}', 'cards', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Network</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(card.network || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Display wallets read-only
+function displayWalletsReadOnly(wallets) {
     const container = document.getElementById('walletContainer');
     if (!container) return;
 
@@ -468,8 +662,111 @@ function displayWallets(wallets, isEditMode) {
                     <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'username')">
                         <i class="fas fa-copy"></i>
                     </button>
-                    ${isEditMode ? `<button class="btn btn-icon edit-btn" onclick="editItem('${wallet.id}', 'wallet')"><i class="fas fa-edit"></i></button>` : ''}
-                    ${isEditMode ? `<button class="btn btn-icon delete-btn" onclick="deleteItem('${wallet.id}', 'wallet')"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Password</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="password">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'password')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Key</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="key">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'key')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Address</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="address">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'address')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Type</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text">${escapeHtml(wallet.type || '-')}</span>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Display wallets edit
+function displayWalletsEdit(wallets) {
+    const container = document.getElementById('walletContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!wallets.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-wallet"></i>
+                <p>No wallets saved</p>
+            </div>`;
+        return;
+    }
+
+    wallets.forEach(wallet => {
+        const item = document.createElement('div');
+        item.className = 'preview-card-item';
+        item.dataset.id = wallet.id;
+        item.innerHTML = `
+            <h3 class="scrollable-text">${escapeHtml(wallet.wallet)}</h3>
+            <div class="field-container">
+                <label class="field-label">Username</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="username">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, '${wallet.id}', 'wallets')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${wallet.id}', 'wallets', 'username')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn btn-icon edit-btn" onclick="editItem('${wallet.id}', 'wallet')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-icon delete-btn" onclick="deleteItem('${wallet.id}', 'wallet')"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
             <div class="field-container">
@@ -579,7 +876,7 @@ async function copyToClipboard(id, type, field) {
     }
 }
 
-// Filter data (shared, filters on public data only)
+// Filter data (shared, filters on public data only, calls appropriate display based on mode)
 function filterData(isEditMode = false) {
     const passwordSearchInput = document.getElementById('passwordSearchInput');
     const categoryFilter = document.getElementById('categoryFilter');
@@ -634,9 +931,15 @@ function filterData(isEditMode = false) {
         return searchMatch && typeMatch;
     }).sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
     
-    displayPasswords(filteredPasswords, isEditMode);
-    displayCards(filteredCards, isEditMode);
-    displayWallets(filteredWallets, isEditMode);
+    if (isEditMode) {
+        displayPasswordsEdit(filteredPasswords);
+        displayCardsEdit(filteredCards);
+        displayWalletsEdit(filteredWallets);
+    } else {
+        displayPasswordsReadOnly(filteredPasswords);
+        displayCardsReadOnly(filteredCards);
+        displayWalletsReadOnly(filteredWallets);
+    }
 }
 
 // Populate filters (shared, uses public data)
@@ -746,9 +1049,12 @@ window.validateJSONStructure = validateJSONStructure;
 window.sortData = sortData;
 window.toggleSection = toggleSection;
 window.displayData = displayData;
-window.displayPasswords = displayPasswords;
-window.displayCards = displayCards;
-window.displayWallets = displayWallets;
+window.displayPasswordsReadOnly = displayPasswordsReadOnly;
+window.displayPasswordsEdit = displayPasswordsEdit;
+window.displayCardsReadOnly = displayCardsReadOnly;
+window.displayCardsEdit = displayCardsEdit;
+window.displayWalletsReadOnly = displayWalletsReadOnly;
+window.displayWalletsEdit = displayWalletsEdit;
 window.toggleVisibility = toggleVisibility;
 window.copyToClipboard = copyToClipboard;
 window.filterData = filterData;

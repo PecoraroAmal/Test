@@ -37,7 +37,7 @@ async function deriveKeyArgon2(password, salt) {
         iterations: 3,
         hashLen: 32
     });
-    const keyBuffer = base64ToArrayBuffer(hash.encoded.split('$').pop()); // Extract hash
+    const keyBuffer = hash.hash; // Uint8Array raw hash
     return window.crypto.subtle.importKey(
         'raw',
         keyBuffer,
