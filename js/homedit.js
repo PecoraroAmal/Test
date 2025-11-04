@@ -48,6 +48,7 @@ export function showMessage(text, type) {
 }
 
 export function handleFileUpload(event) {
+    console.log('handleFileUpload triggered', event);
     const files = event.target?.files || event.dataTransfer?.files;
     const file = files?.[0];
 
@@ -794,29 +795,41 @@ function populateTypeFilter(data) {
 }
 
 export function initUploadZone() {
+    console.log('initUploadZone called');
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {
         fileInput.addEventListener('change', handleFileUpload);
+        console.log('fileInput listener added');
+    } else {
+        console.error('fileInput not found');
     }
 
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
         uploadZone.addEventListener('dragover', e => {
+            console.log('dragover');
             e.preventDefault();
             uploadZone.classList.add('drag-over');
         });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+        uploadZone.addEventListener('dragleave', () => {
+            console.log('dragleave');
+            uploadZone.classList.remove('drag-over');
+        });
         uploadZone.addEventListener('drop', e => {
+            console.log('drop', e.dataTransfer.files);
             e.preventDefault();
             uploadZone.classList.remove('drag-over');
             const file = e.dataTransfer.files[0];
             if (file) handleFileUpload({ target: { files: [file] } });
         });
         uploadZone.addEventListener('click', () => {
+            console.log('uploadZone click');
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
                 fileInput.click();
             }
         });
+    } else {
+        console.error('uploadZone not found');
     }
 }
