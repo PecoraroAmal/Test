@@ -153,7 +153,7 @@ function displayPasswords(passwords) {
             <div class="field-container">
                 <label class="field-label">URL</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(pwd.url || '-')}" data-field="url">${escapeHtml(pwd.url || '-')}</span>
+                    <a href="${escapeHtml(pwd.url || '#')}" class="scrollable-text" target="_blank" rel="noopener noreferrer">${escapeHtml(pwd.url || '-')}</a>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.url)}', 'URL')">
@@ -164,10 +164,13 @@ function displayPasswords(passwords) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(pwd.notes || '-')}" data-notes="true">${escapeHtml(pwd.notes || '-')}</span>
+                    <span class="hidden-content scrollable-text" data-field="notes" data-notes="true">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.notes)}', 'Notes')">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'passwords', '${pwd.id}', 'notes')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'passwords', '${pwd.id}', 'notes', 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -179,10 +182,10 @@ function displayPasswords(passwords) {
                 </div>
             </div>
             <div class="action-buttons">
-                <button class="btn btn-primary btn-edit" onclick="editPassword('${pwd.id}')">
+                <button class="btn btn-primary btn-edit" onclick="editItem('passwords', '${pwd.id}', this.closest('.preview-card-item'))">
                     <i class="fas fa-edit"></i> Edit
                 </button>
-                <button class="btn btn-danger btn-delete" onclick="confirmDelete('password', '${pwd.id}')">
+                <button class="btn btn-danger btn-delete" onclick="confirmDelete('passwords', '${pwd.id}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -270,27 +273,30 @@ function displayCards(cards) {
                 </div>
             </div>
             <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="hidden-content scrollable-text" data-field="notes" data-notes="true">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'cards', '${card.id}', 'notes')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'cards', '${card.id}', 'notes', 'Notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
                 <label class="field-label">Network</label>
                 <div class="content-wrapper">
                     <span class="scrollable-text" data-value="${escapeHtml(card.network || '-')}" data-field="network">${escapeHtml(card.network || '-')}</span>
                 </div>
             </div>
-            <div class="field-container">
-                <label class="field-label">Notes</label>
-                <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(card.notes || '-')}" data-notes="true">${escapeHtml(card.notes || '-')}</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(card.notes)}', 'Notes')">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            </div>
             <div class="action-buttons">
-                <button class="btn btn-primary btn-edit" onclick="editCard('${card.id}')">
+                <button class="btn btn-primary btn-edit" onclick="editItem('cards', '${card.id}', this.closest('.preview-card-item'))">
                     <i class="fas fa-edit"></i> Edit
                 </button>
-                <button class="btn btn-danger btn-delete" onclick="confirmDelete('card', '${card.id}')">
+                <button class="btn btn-danger btn-delete" onclick="confirmDelete('cards', '${card.id}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -374,10 +380,13 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(wallet.notes || '-')}" data-notes="true">${escapeHtml(wallet.notes || '-')}</span>
+                    <span class="hidden-content scrollable-text" data-field="notes" data-notes="true">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.notes)}', 'Notes')">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'wallets', '${wallet.id}', 'notes')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'wallets', '${wallet.id}', 'notes', 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -389,10 +398,10 @@ function displayWallets(wallets) {
                 </div>
             </div>
             <div class="action-buttons">
-                <button class="btn btn-primary btn-edit" onclick="editWallet('${wallet.id}')">
+                <button class="btn btn-primary btn-edit" onclick="editItem('wallets', '${wallet.id}', this.closest('.preview-card-item'))">
                     <i class="fas fa-edit"></i> Edit
                 </button>
-                <button class="btn btn-danger btn-delete" onclick="confirmDelete('wallet', '${wallet.id}')">
+                <button class="btn btn-danger btn-delete" onclick="confirmDelete('wallets', '${wallet.id}')">
                     <i class="fas fa-trash"></i> Delete
                 </button>
             </div>
@@ -407,17 +416,15 @@ async function toggleVisibility(button, type, id, field) {
     const span = parent?.querySelector('.hidden-content');
     if (!span) return;
 
-    const isHidden = span.textContent === '••••••••••••';
+    const isHidden = span.textContent === '••••••••••••' || span.textContent === '-';
 
     if (isHidden) {
         const sensitive = await decryptSensitive(sensitiveData[type][id], sessionKey);
         const value = sensitive[field] || '-';
         span.textContent = value;
-        span.dataset.value = value;
         button.innerHTML = '<i class="fas fa-eye-slash"></i>';
     } else {
         span.textContent = '••••••••••••';
-        delete span.dataset.value;
         button.innerHTML = '<i class="fas fa-eye"></i>';
     }
 }
@@ -490,78 +497,18 @@ async function addPassword() {
             platform: document.getElementById('platform').value,
             username: document.getElementById('username').value,
             url: document.getElementById('url').value,
-            category: document.getElementById('category').value,
+            category: document.getElementById('category').value
+        };
+        const sensitive = { 
+            password: document.getElementById('password').value,
             notes: document.getElementById('notes').value
         };
-        const sensitive = { password: document.getElementById('password').value };
         loadedData.passwords.push(newPwd);
         sensitiveData.passwords[id] = await encryptSensitive(sensitive, sessionKey);
         sortData();
-        displayData(loadedData);
-        populateFilters(loadedData);
+        displayData();
+        populateFilters();
         showMessage('Password added successfully!', 'success');
-        document.body.removeChild(modal);
-    });
-}
-
-// Edit password
-async function editPassword(id) {
-    const pwd = loadedData.passwords.find(p => p.id === id);
-    const sensitive = await decryptSensitive(sensitiveData.passwords[id], sessionKey);
-
-    const modal = createModal('Edit Password');
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Edit Password</h2>
-            <form id="editPasswordForm">
-                <div class="form-group">
-                    <label for="platform">Platform</label>
-                    <input type="text" id="platform" value="${escapeHtml(pwd.platform)}" required>
-                </div>
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" value="${escapeHtml(pwd.username)}">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="text" id="password" value="${escapeHtml(sensitive.password)}" required>
-                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('password').value = generateRandomPassword();">Generate</button>
-                </div>
-                <div class="form-group">
-                    <label for="url">URL</label>
-                    <input type="url" id="url" value="${escapeHtml(pwd.url)}">
-                </div>
-                <div class="form-group">
-                    <label for="notes">Notes</label>
-                    <textarea id="notes">${escapeHtml(pwd.notes)}</textarea>
-                </div>
-                <div class="form-group">
-                    <label for="category">Category</label>
-                    <input type="text" id="category" value="${escapeHtml(pwd.category)}">
-                </div>
-                <div class="modal-buttons">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn btn-secondary" onclick="document.body.removeChild(this.closest('.modal'))">Cancel</button>
-                </div>
-            </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    const form = document.getElementById('editPasswordForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        pwd.platform = document.getElementById('platform').value;
-        pwd.username = document.getElementById('username').value;
-        pwd.url = document.getElementById('url').value;
-        pwd.category = document.getElementById('category').value;
-        pwd.notes = document.getElementById('notes').value;
-        const newSensitive = { password: document.getElementById('password').value };
-        sensitiveData.passwords[id] = await encryptSensitive(newSensitive, sessionKey);
-        sortData();
-        displayData(loadedData);
-        populateFilters(loadedData);
-        showMessage('Password updated successfully!', 'success');
         document.body.removeChild(modal);
     });
 }
@@ -594,12 +541,12 @@ async function addCard() {
                     <input type="text" id="pin">
                 </div>
                 <div class="form-group">
-                    <label for="network">Network</label>
-                    <input type="text" id="network">
-                </div>
-                <div class="form-group">
                     <label for="notes">Notes</label>
                     <textarea id="notes"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="network">Network</label>
+                    <input type="text" id="network">
                 </div>
                 <div class="modal-buttons">
                     <button type="submit" class="btn btn-primary">Add</button>
@@ -617,89 +564,21 @@ async function addCard() {
         const newCard = {
             id,
             issuer: document.getElementById('issuer').value,
-            network: document.getElementById('network').value,
-            notes: document.getElementById('notes').value
+            network: document.getElementById('network').value
         };
         const sensitive = {
             pan: document.getElementById('pan').value,
             expiryDate: document.getElementById('expiryDate').value,
             cvv: document.getElementById('cvv').value,
-            pin: document.getElementById('pin').value
+            pin: document.getElementById('pin').value,
+            notes: document.getElementById('notes').value
         };
         loadedData.cards.push(newCard);
         sensitiveData.cards[id] = await encryptSensitive(sensitive, sessionKey);
         sortData();
-        displayData(loadedData);
-        populateFilters(loadedData);
+        displayData();
+        populateFilters();
         showMessage('Card added successfully!', 'success');
-        document.body.removeChild(modal);
-    });
-}
-
-// Edit card
-async function editCard(id) {
-    const card = loadedData.cards.find(c => c.id === id);
-    const sensitive = await decryptSensitive(sensitiveData.cards[id], sessionKey);
-
-    const modal = createModal('Edit Card');
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Edit Card</h2>
-            <form id="editCardForm">
-                <div class="form-group">
-                    <label for="issuer">Issuer</label>
-                    <input type="text" id="issuer" value="${escapeHtml(card.issuer)}" required>
-                </div>
-                <div class="form-group">
-                    <label for="pan">PAN</label>
-                    <input type="text" id="pan" value="${escapeHtml(sensitive.pan)}" required>
-                </div>
-                <div class="form-group">
-                    <label for="expiryDate">Expiry Date</label>
-                    <input type="text" id="expiryDate" value="${escapeHtml(sensitive.expiryDate)}" required>
-                </div>
-                <div class="form-group">
-                    <label for="cvv">CVV</label>
-                    <input type="text" id="cvv" value="${escapeHtml(sensitive.cvv)}" required>
-                </div>
-                <div class="form-group">
-                    <label for="pin">PIN</label>
-                    <input type="text" id="pin" value="${escapeHtml(sensitive.pin)}">
-                </div>
-                <div class="form-group">
-                    <label for="network">Network</label>
-                    <input type="text" id="network" value="${escapeHtml(card.network)}">
-                </div>
-                <div class="form-group">
-                    <label for="notes">Notes</label>
-                    <textarea id="notes">${escapeHtml(card.notes)}</textarea>
-                </div>
-                <div class="modal-buttons">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn btn-secondary" onclick="document.body.removeChild(this.closest('.modal'))">Cancel</button>
-                </div>
-            </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    const form = document.getElementById('editCardForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        card.issuer = document.getElementById('issuer').value;
-        card.network = document.getElementById('network').value;
-        card.notes = document.getElementById('notes').value;
-        const newSensitive = {
-            pan: document.getElementById('pan').value,
-            expiryDate: document.getElementById('expiryDate').value,
-            cvv: document.getElementById('cvv').value,
-            pin: document.getElementById('pin').value
-        };
-        sensitiveData.cards[id] = await encryptSensitive(newSensitive, sessionKey);
-        sortData();
-        displayData(loadedData);
-        populateFilters(loadedData);
-        showMessage('Card updated successfully!', 'success');
         document.body.removeChild(modal);
     });
 }
@@ -732,12 +611,12 @@ async function addWallet() {
                     <input type="text" id="address">
                 </div>
                 <div class="form-group">
-                    <label for="type">Type</label>
-                    <input type="text" id="type">
-                </div>
-                <div class="form-group">
                     <label for="notes">Notes</label>
                     <textarea id="notes"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="type">Type</label>
+                    <input type="text" id="type">
                 </div>
                 <div class="modal-buttons">
                     <button type="submit" class="btn btn-primary">Add</button>
@@ -757,89 +636,93 @@ async function addWallet() {
             wallet: document.getElementById('wallet').value,
             username: document.getElementById('username').value,
             address: document.getElementById('address').value,
-            type: document.getElementById('type').value,
-            notes: document.getElementById('notes').value
+            type: document.getElementById('type').value
         };
         const sensitive = {
             password: document.getElementById('password').value,
-            key: document.getElementById('key').value
+            key: document.getElementById('key').value,
+            notes: document.getElementById('notes').value
         };
         loadedData.wallets.push(newWallet);
         sensitiveData.wallets[id] = await encryptSensitive(sensitive, sessionKey);
         sortData();
-        displayData(loadedData);
-        populateFilters(loadedData);
+        displayData();
+        populateFilters();
         showMessage('Wallet added successfully!', 'success');
         document.body.removeChild(modal);
     });
 }
 
-// Edit wallet
-async function editWallet(id) {
-    const wallet = loadedData.wallets.find(w => w.id === id);
-    const sensitive = await decryptSensitive(sensitiveData.wallets[id], sessionKey);
-
-    const modal = createModal('Edit Wallet');
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Edit Wallet</h2>
-            <form id="editWalletForm">
-                <div class="form-group">
-                    <label for="wallet">Wallet</label>
-                    <input type="text" id="wallet" value="${escapeHtml(wallet.wallet)}" required>
-                </div>
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" value="${escapeHtml(wallet.username)}">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="text" id="password" value="${escapeHtml(sensitive.password)}">
-                </div>
-                <div class="form-group">
-                    <label for="key">Key</label>
-                    <input type="text" id="key" value="${escapeHtml(sensitive.key)}">
-                </div>
-                <div class="form-group">
-                    <label for="address">Address</label>
-                    <input type="text" id="address" value="${escapeHtml(wallet.address)}">
-                </div>
-                <div class="form-group">
-                    <label for="type">Type</label>
-                    <input type="text" id="type" value="${escapeHtml(wallet.type)}">
-                </div>
-                <div class="form-group">
-                    <label for="notes">Notes</label>
-                    <textarea id="notes">${escapeHtml(wallet.notes)}</textarea>
-                </div>
-                <div class="modal-buttons">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn btn-secondary" onclick="document.body.removeChild(this.closest('.modal'))">Cancel</button>
-                </div>
-            </form>
-        </div>
+// Edit item in-line
+async function editItem(type, id, cardElem) {
+    const fields = cardElem.querySelectorAll('.field-container');
+    const actionButtons = cardElem.querySelector('.action-buttons');
+    actionButtons.innerHTML = `
+        <button class="btn btn-primary btn-save" onclick="saveItem('${type}', '${id}', this.closest('.preview-card-item'))">
+            <i class="fas fa-save"></i> Save
+        </button>
+        <button class="btn btn-secondary btn-cancel" onclick="cancelEdit('${type}', '${id}', this.closest('.preview-card-item'))">
+            <i class="fas fa-undo"></i> Cancel
+        </button>
     `;
-    document.body.appendChild(modal);
 
-    const form = document.getElementById('editWalletForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        wallet.wallet = document.getElementById('wallet').value;
-        wallet.username = document.getElementById('username').value;
-        wallet.address = document.getElementById('address').value;
-        wallet.type = document.getElementById('type').value;
-        wallet.notes = document.getElementById('notes').value;
-        const newSensitive = {
-            password: document.getElementById('password').value,
-            key: document.getElementById('key').value
-        };
-        sensitiveData.wallets[id] = await encryptSensitive(newSensitive, sessionKey);
-        sortData();
-        displayData(loadedData);
-        populateFilters(loadedData);
-        showMessage('Wallet updated successfully!', 'success');
-        document.body.removeChild(modal);
-    });
+    for (const field of fields) {
+        const label = field.querySelector('.field-label').textContent.toLowerCase().replace(/\s/g, '');
+        const contentWrapper = field.querySelector('.content-wrapper');
+        const buttonGroup = field.querySelector('.button-group');
+        buttonGroup.style.display = 'none';
+
+        let value;
+        if (contentWrapper.querySelector('span.hidden-content')) {
+            const sensitive = await decryptSensitive(sensitiveData[type][id], sessionKey);
+            value = sensitive[label] || '';
+            contentWrapper.innerHTML = `<input type="text" class="edit-input" value="${escapeHtml(value)}" data-field="${label}">`;
+        } else if (contentWrapper.querySelector('a')) {
+            value = contentWrapper.querySelector('a').href;
+            contentWrapper.innerHTML = `<input type="url" class="edit-input" value="${escapeHtml(value)}" data-field="${label}">`;
+        } else {
+            value = contentWrapper.querySelector('span').textContent;
+            if (label === 'notes') {
+                contentWrapper.innerHTML = `<textarea class="edit-input" data-field="${label}">${escapeHtml(value)}</textarea>`;
+            } else {
+                contentWrapper.innerHTML = `<input type="text" class="edit-input" value="${escapeHtml(value)}" data-field="${label}">`;
+            }
+        }
+    }
+
+    // For platform/issuer/wallet (h3)
+    const header = cardElem.querySelector('h3');
+    const headerLabel = type === 'passwords' ? 'platform' : type === 'cards' ? 'issuer' : 'wallet';
+    const headerValue = header.textContent;
+    header.innerHTML = `<input type="text" class="edit-input" value="${escapeHtml(headerValue)}" data-field="${headerLabel}">`;
+}
+
+// Save edited item
+async function saveItem(type, id, cardElem) {
+    const inputs = cardElem.querySelectorAll('.edit-input');
+    let nonSensitive = loadedData[type].find(item => item.id === id);
+    let sensitiveObj = await decryptSensitive(sensitiveData[type][id], sessionKey);
+
+    for (const input of inputs) {
+        const field = input.dataset.field;
+        const value = input.value;
+        if (['password', 'notes', 'pan', 'expirydate', 'cvv', 'pin', 'key'].includes(field.toLowerCase())) {
+            sensitiveObj[field] = value;
+        } else {
+            nonSensitive[field] = value;
+        }
+    }
+
+    sensitiveData[type][id] = await encryptSensitive(sensitiveObj, sessionKey);
+    sortData();
+    displayData();
+    populateFilters();
+    showMessage('Item updated successfully!', 'success');
+}
+
+// Cancel edit
+function cancelEdit(type, id, cardElem) {
+    displayData(); // Re-render to cancel
 }
 
 // Confirm delete
@@ -856,25 +739,21 @@ function confirmDelete(type, id) {
         </div>
     `;
     document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
 }
 
 // Delete item
 function deleteItem(type, id, modal) {
-    if (type === 'password') {
-        loadedData.passwords = loadedData.passwords.filter(pwd => pwd.id !== id);
-        delete sensitiveData.passwords[id];
-        showMessage('Password deleted successfully!', 'success');
-    } else if (type === 'card') {
-        loadedData.cards = loadedData.cards.filter(card => card.id !== id);
-        delete sensitiveData.cards[id];
-        showMessage('Card deleted successfully!', 'success');
-    } else if (type === 'wallet') {
-        loadedData.wallets = loadedData.wallets.filter(wallet => wallet.id !== id);
-        delete sensitiveData.wallets[id];
-        showMessage('Wallet deleted successfully!', 'success');
-    }
-    displayData(loadedData);
-    populateFilters(loadedData);
+    loadedData[type] = loadedData[type].filter(item => item.id !== id);
+    delete sensitiveData[type][id];
+    displayData();
+    populateFilters();
+    showMessage('Item deleted successfully!', 'success');
     document.body.removeChild(modal);
 }
 
@@ -882,12 +761,6 @@ function deleteItem(type, id, modal) {
 function createModal(title) {
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.innerHTML = ''; // Filled by caller
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
-        }
-    });
     return modal;
 }
 

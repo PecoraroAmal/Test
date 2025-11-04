@@ -134,7 +134,7 @@ function displayPasswords(passwords) {
             <div class="field-container">
                 <label class="field-label">URL</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(pwd.url || '-')}" data-field="url">${escapeHtml(pwd.url || '-')}</span>
+                    <a href="${escapeHtml(pwd.url || '#')}" class="scrollable-text" target="_blank" rel="noopener noreferrer">${escapeHtml(pwd.url || '-')}</a>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.url)}', 'URL')">
@@ -145,10 +145,13 @@ function displayPasswords(passwords) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(pwd.notes || '-')}" data-notes="true">${escapeHtml(pwd.notes || '-')}</span>
+                    <span class="hidden-content scrollable-text" data-field="notes" data-notes="true">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.notes)}', 'Notes')">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'passwords', '${pwd.id}', 'notes')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'passwords', '${pwd.id}', 'notes', 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -243,20 +246,23 @@ function displayCards(cards) {
                 </div>
             </div>
             <div class="field-container">
-                <label class="field-label">Network</label>
+                <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(card.network || '-')}" data-field="network">${escapeHtml(card.network || '-')}</span>
+                    <span class="hidden-content scrollable-text" data-field="notes" data-notes="true">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'cards', '${card.id}', 'notes')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'cards', '${card.id}', 'notes', 'Notes')">
+                        <i class="fas fa-copy"></i>
+                    </button>
                 </div>
             </div>
             <div class="field-container">
-                <label class="field-label">Notes</label>
+                <label class="field-label">Network</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(card.notes || '-')}" data-notes="true">${escapeHtml(card.notes || '-')}</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(card.notes)}', 'Notes')">
-                        <i class="fas fa-copy"></i>
-                    </button>
+                    <span class="scrollable-text" data-value="${escapeHtml(card.network || '-')}" data-field="network">${escapeHtml(card.network || '-')}</span>
                 </div>
             </div>
         `;
@@ -339,10 +345,13 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(wallet.notes || '-')}" data-notes="true">${escapeHtml(wallet.notes || '-')}</span>
+                    <span class="hidden-content scrollable-text" data-field="notes" data-notes="true">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.notes)}', 'Notes')">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this, 'wallets', '${wallet.id}', 'notes')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copySensitive(this, 'wallets', '${wallet.id}', 'notes', 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -364,17 +373,15 @@ async function toggleVisibility(button, type, id, field) {
     const span = parent?.querySelector('.hidden-content');
     if (!span) return;
 
-    const isHidden = span.textContent === '••••••••••••';
+    const isHidden = span.textContent === '••••••••••••' || span.textContent === '-';
 
     if (isHidden) {
         const sensitive = await decryptSensitive(sensitiveData[type][id], sessionKey);
         const value = sensitive[field] || '-';
         span.textContent = value;
-        span.dataset.value = value;
         button.innerHTML = '<i class="fas fa-eye-slash"></i>';
     } else {
         span.textContent = '••••••••••••';
-        delete span.dataset.value;
         button.innerHTML = '<i class="fas fa-eye"></i>';
     }
 }

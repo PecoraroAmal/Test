@@ -67,10 +67,12 @@ async function separateData(rawData) {
             platform: pwd.platform || '',
             username: pwd.username || '',
             url: pwd.url || '',
-            category: pwd.category || '',
-            notes: pwd.notes || ''
+            category: pwd.category || ''
         });
-        const sensitive = { password: pwd.password || '' };
+        const sensitive = { 
+            password: pwd.password || '',
+            notes: pwd.notes || ''
+        };
         sensitiveData.passwords[id] = await encryptSensitive(sensitive, sessionKey);
     }
 
@@ -81,14 +83,14 @@ async function separateData(rawData) {
         loadedData.cards.push({
             id,
             issuer: card.issuer || '',
-            network: card.network || '',
-            notes: card.notes || ''
+            network: card.network || ''
         });
         const sensitive = {
             pan: card.pan || '',
             expiryDate: card.expiryDate || '',
             cvv: card.cvv || '',
-            pin: card.pin || ''
+            pin: card.pin || '',
+            notes: card.notes || ''
         };
         sensitiveData.cards[id] = await encryptSensitive(sensitive, sessionKey);
     }
@@ -102,12 +104,12 @@ async function separateData(rawData) {
             wallet: wallet.wallet || '',
             username: wallet.username || '',
             address: wallet.address || '',
-            type: wallet.type || '',
-            notes: wallet.notes || ''
+            type: wallet.type || ''
         });
         const sensitive = {
             password: wallet.password || '',
-            key: wallet.key || ''
+            key: wallet.key || '',
+            notes: wallet.notes || ''
         };
         sensitiveData.wallets[id] = await encryptSensitive(sensitive, sessionKey);
     }
@@ -121,7 +123,7 @@ async function recombineData() {
 
     for (const pwd of loadedData.passwords) {
         const sensitive = await decryptSensitive(sensitiveData.passwords[pwd.id], sessionKey);
-        fullData.passwords.push({ ...pwd, password: sensitive.password });
+        fullData.passwords.push({ ...pwd, password: sensitive.password, notes: sensitive.notes });
     }
 
     for (const card of loadedData.cards) {
@@ -131,7 +133,8 @@ async function recombineData() {
             pan: sensitive.pan,
             expiryDate: sensitive.expiryDate,
             cvv: sensitive.cvv,
-            pin: sensitive.pin
+            pin: sensitive.pin,
+            notes: sensitive.notes
         });
     }
 
@@ -140,7 +143,8 @@ async function recombineData() {
         fullData.wallets.push({
             ...wallet,
             password: sensitive.password,
-            key: sensitive.key
+            key: sensitive.key,
+            notes: sensitive.notes
         });
     }
 
@@ -286,7 +290,7 @@ function toggleSection(containerId, button) {
 }
 
 // Filter data
-function filterData() {
+async function filterData() {
     const passwordSearchInput = document.getElementById('passwordSearchInput');
     const categoryFilter = document.getElementById('categoryFilter');
     const cardSearchInput = document.getElementById('cardSearchInput');
@@ -304,47 +308,62 @@ function filterData() {
     const type = typeFilter.value.toLowerCase();
     
     // Filter passwords
-    const filteredPasswords = loadedData.passwords.filter(pwd => {
+    const filteredPasswords = [];
+    for (const pwd of loadedData.passwords) {
+        const sensitive = await decryptSensitive(sensitiveData.passwords[pwd.id], sessionKey);
         const searchMatch = !passwordSearch || 
             pwd.platform.toLowerCase().includes(passwordSearch) ||
             pwd.username.toLowerCase().includes(passwordSearch) ||
             (pwd.url && pwd.url.toLowerCase().includes(passwordSearch)) ||
-            (pwd.notes && pwd.notes.toLowerCase().includes(passwordSearch)) ||
+            (sensitive.notes && sensitive.notes.toLowerCase().includes(passwordSearch)) ||
             (pwd.category && pwd.category.toLowerCase().includes(passwordSearch));
         
         const categoryMatch = !category || 
             (pwd.category && pwd.category.toLowerCase() === category);
         
-        return searchMatch && categoryMatch;
-    }).sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
+        if (searchMatch && categoryMatch) filteredPasswords.push(pwd);
+    }
+    filteredPasswords.sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
     
     // Filter cards
-    const filteredCards = loadedData.cards.filter(card => {
+    const filteredCards = [];
+    for (const card of loadedData.cards) {
+        const sensitive = await decryptSensitive(sensitiveData.cards[card.id], sessionKey);
         const searchMatch = !cardSearch || 
             card.issuer.toLowerCase().includes(cardSearch) ||
             (card.network && card.network.toLowerCase().includes(cardSearch)) ||
-            (card.notes && card.notes.toLowerCase().includes(cardSearch));
+            (sensitive.notes && sensitive.notes.toLowerCase().includes(cardSearch)) ||
+            sensitive.pan.toLowerCase().includes(cardSearch) ||
+            sensitive.expiryDate.toLowerCase().includes(cardSearch) ||
+            sensitive.cvv.toLowerCase().includes(cardSearch) ||
+            sensitive.pin.toLowerCase().includes(cardSearch);
         
         const circuitMatch = !circuit || 
             (card.network && card.network.toLowerCase() === circuit);
         
-        return searchMatch && circuitMatch;
-    }).sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
+        if (searchMatch && circuitMatch) filteredCards.push(card);
+    }
+    filteredCards.sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
     
     // Filter wallets
-    const filteredWallets = loadedData.wallets.filter(wallet => {
+    const filteredWallets = [];
+    for (const wallet of loadedData.wallets) {
+        const sensitive = await decryptSensitive(sensitiveData.wallets[wallet.id], sessionKey);
         const searchMatch = !walletSearch || 
             wallet.wallet.toLowerCase().includes(walletSearch) ||
             (wallet.username && wallet.username.toLowerCase().includes(walletSearch)) ||
             (wallet.address && wallet.address.toLowerCase().includes(walletSearch)) ||
             (wallet.type && wallet.type.toLowerCase().includes(walletSearch)) ||
-            (wallet.notes && wallet.notes.toLowerCase().includes(walletSearch));
+            (sensitive.notes && sensitive.notes.toLowerCase().includes(walletSearch)) ||
+            sensitive.password.toLowerCase().includes(walletSearch) ||
+            (sensitive.key && sensitive.key.toLowerCase().includes(walletSearch));
         
         const typeMatch = !type || 
             (wallet.type && wallet.type.toLowerCase() === type);
         
-        return searchMatch && typeMatch;
-    }).sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
+        if (searchMatch && typeMatch) filteredWallets.push(wallet);
+    }
+    filteredWallets.sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
     
     displayPasswords(filteredPasswords);
     displayCards(filteredCards);
