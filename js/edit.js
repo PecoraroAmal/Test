@@ -610,18 +610,18 @@ async function downloadFile(encrypted) {
             wallets: []
         };
         
-        for (const pwd of loadedPublicData.passwords) {
+        await Promise.all(loadedPublicData.passwords.map(async (pwd) => {
             const sensitive = await decryptSensitive(loadedSensitiveData.get(pwd.id), sessionKey);
             fullData.passwords.push({ ...pwd, ...sensitive });
-        }
-        for (const card of loadedPublicData.cards) {
+        }));
+        await Promise.all(loadedPublicData.cards.map(async (card) => {
             const sensitive = await decryptSensitive(loadedSensitiveData.get(card.id), sessionKey);
             fullData.cards.push({ ...card, ...sensitive });
-        }
-        for (const wallet of loadedPublicData.wallets) {
+        }));
+        await Promise.all(loadedPublicData.wallets.map(async (wallet) => {
             const sensitive = await decryptSensitive(loadedSensitiveData.get(wallet.id), sessionKey);
             fullData.wallets.push({ ...wallet, ...sensitive });
-        }
+        }));
         
         let content;
         if (encrypted) {

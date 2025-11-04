@@ -15,7 +15,7 @@
 }
 
 .policy-section h3 {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     color: var(--primary-color, #333);
     margin: 20px 0 10px;
     font-weight: 600;
@@ -65,11 +65,11 @@
     }
 
     .policy-section h2 {
-        font-size: 1.5rem;
+        font-size: 1.6rem;
     }
 
     .policy-section h3 {
-        font-size: 1.5rem;
+        font-size: 1.6rem;
     }
 
     .policy-section p,

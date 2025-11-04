@@ -68,7 +68,7 @@ function handleFileUpload(event) {
 }
 
 // Open file (shared, with separation of sensitive data)
-// Aggiunto check per vecchi file encrypted senza password
+// Aggiunto check per vecchi file encrypted senza password, e await per processing
 async function openFile(isEditMode = false) {
     if (!uploadedFile) {
         showMessage('Select a valid JSON file first', 'error');
@@ -119,8 +119,8 @@ async function openFile(isEditMode = false) {
         };
         loadedSensitiveData.clear();
         
-        // Process passwords
-        (Array.isArray(data.passwords) ? data.passwords : []).forEach(async (pwd) => {
+        // Process passwords with await
+        await Promise.all((Array.isArray(data.passwords) ? data.passwords : []).map(async (pwd) => {
             const id = pwd.id || generateUniqueId();
             const publicPwd = {
                 id,
@@ -135,10 +135,10 @@ async function openFile(isEditMode = false) {
             };
             loadedPublicData.passwords.push(publicPwd);
             loadedSensitiveData.set(id, await encryptSensitive(sensitivePwd, sessionKey));
-        });
+        }));
         
         // Process cards
-        (Array.isArray(data.cards) ? data.cards : []).forEach(async (card) => {
+        await Promise.all((Array.isArray(data.cards) ? data.cards : []).map(async (card) => {
             const id = card.id || generateUniqueId();
             const publicCard = {
                 id,
@@ -154,10 +154,10 @@ async function openFile(isEditMode = false) {
             };
             loadedPublicData.cards.push(publicCard);
             loadedSensitiveData.set(id, await encryptSensitive(sensitiveCard, sessionKey));
-        });
+        }));
         
         // Process wallets
-        (Array.isArray(data.wallets) ? data.wallets : []).forEach(async (wallet) => {
+        await Promise.all((Array.isArray(data.wallets) ? data.wallets : []).map(async (wallet) => {
             const id = wallet.id || generateUniqueId();
             const publicWallet = {
                 id,
@@ -173,7 +173,7 @@ async function openFile(isEditMode = false) {
             };
             loadedPublicData.wallets.push(publicWallet);
             loadedSensitiveData.set(id, await encryptSensitive(sensitiveWallet, sessionKey));
-        });
+        }));
         
         sortData();
         displayData(isEditMode);
