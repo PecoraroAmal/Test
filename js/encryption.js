@@ -213,5 +213,3 @@ async function decryptV2(base64Package, password) {
 // ======================= ESPORTAZIONE =======================
 window.encryptV2 = encryptV2;
 window.decryptV2 = decryptV2;
-
-console.log('crypto-v2.js PRO caricato → PBKDF2 + Envelope + AD + Header strutturato');

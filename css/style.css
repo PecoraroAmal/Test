@@ -536,7 +536,7 @@ h2 {
     font-size: 24px;
 }
 
-/* GitHub button in info.html?v=2.5 footer */
+/* GitHub button in info.html?v=2.6 footer */
 .btn.btn-primary i.fab.fa-github {
     margin-right: 10px;
     font-size: 24px;
@@ -563,7 +563,7 @@ h2 {
 }
 
 .feature-item i {
-    font-size: 2.5rem;
+    font-size: 2.6rem;
     color: var(--primary-color);
     margin-bottom: var(--spacing-md);
 }
