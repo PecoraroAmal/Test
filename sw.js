@@ -1,28 +1,28 @@
-const CACHE_NAME = 'Test-cache-v2.3';
+const CACHE_NAME = 'Test-cache-v2.4';
 const urlsToCache = [
-  'index.html?v=2.3',
-  'edit.html?v=2.3',
-  'privacy-policy.html?v=2.3',
-  'cookie-policy.html?v=2.3',
-  'info.html?v=2.3',
-  'informazioni.html?v=2.3',
-  'download.html?v=2.3',
-  'scarica.html?v=2.3',
-  'css/style.css?v=2.3',
-  'css/policy.css?v=2.3',
-  'js/crypto.js?v=2.3',
-  'js/edit.js?v=2.3',
-  'js/home.js?v=2.3',
-  'js/info.js?v=2.3',
-  'js/app.js?v=2.3',
-  'js/utils.js?v=2.3',
-  'assets/apple-touch-icon.png',
-  'assets/Test-logo.png',
-  'assets/favicon-96x96.png',
-  'assets/favicon.ico',
-  'assets/favicon.svg',
-  'assets/web-app-manifest-192x192.png',
-  'assets/web-app-manifest-512x512.png',
+  'index.html?v=2.4',
+  'edit.html?v=2.4',
+  'privacy-policy.html?v=2.4',
+  'cookie-policy.html?v=2.4',
+  'info.html?v=2.4',
+  'informazioni.html?v=2.4',
+  'download.html?v=2.4',
+  'scarica.html?v=2.4',
+  'css/style.css?v=2.4',
+  'css/policy.css?v=2.4',
+  '/Test/js/crypto.js?v=2.4',
+  '/Test/js/edit.js?v=2.4',
+  '/Test/js/home.js?v=2.4',
+  '/Test/js/info.js?v=2.4',
+  '/Test/js/app.js?v=2.4',
+  '/Test/js/utils.js?v=2.4',
+  '/Test/assets/apple-touch-icon.png',
+  '/Test/assets/Test-logo.png',
+  '/Test/assets/favicon-96x96.png',
+  '/Test/assets/favicon.ico',
+  '/Test/assets/favicon.svg',
+  '/Test/assets/web-app-manifest-192x192.png',
+  '/Test/assets/web-app-manifest-512x512.png',
   'manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-solid-900.woff2',
@@ -81,11 +81,11 @@ self.addEventListener('fetch', event => {
           return fetchAndUpdateCache(event.request);
         }
         // If offline and not in cache, return fallback
-        return caches.match('index.html?v=2.3');
+        return caches.match('index.html?v=2.4');
       })
       .catch(error => {
         console.error('Fetch failed:', error);
-        return caches.match('index.html?v=2.3');
+        return caches.match('index.html?v=2.4');
       })
   );
 });
