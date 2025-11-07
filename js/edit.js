@@ -1,33 +1,18 @@
-let loadedData = { passwords: [], cards: [], wallets: [] };
+// Global variables
+let loadedData = { "passwords": [], "cards": [], "wallets": [] };
 let uploadedFile = null;
 let uploadedFileName = null;
 
-// Genera ID univoco (usa crypto.randomUUID per standard e sicurezza)
+// Function to generate a unique ID
 function generateUniqueId() {
-    try {
-        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
-    } catch (e) {
-        // ignore
-    }
-    // Fallback: RFC4122 v4-like using getRandomValues if available
-    try {
-        if (window.crypto && crypto.getRandomValues) {
-            const bytes = new Uint8Array(16);
-            crypto.getRandomValues(bytes);
-            bytes[6] = (bytes[6] & 0x0f) | 0x40;
-            bytes[8] = (bytes[8] & 0x3f) | 0x80;
-            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-            return `${hex.substr(0,8)}-${hex.substr(8,4)}-${hex.substr(12,4)}-${hex.substr(16,4)}-${hex.substr(20,12)}`;
-        }
-    } catch (e) {
-        // ignore
-    }
-    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
+    return 'xxxx-xxxx-xxxx-xxxx'.replace(/[x]/g, () => {
+        return (Math.random() * 16 | 0).toString(16);
+    });
 }
 
-// Inizializzazione al caricamento della pagina
+// Initialization when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Listener per input e filtri
+    // Event listeners
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {
         fileInput.addEventListener('change', handleFileUpload);
@@ -62,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const decryptPassword = document.getElementById('decryptPassword');
     if (decryptPassword) {
-        decryptPassword.addEventListener('keydown', e => {
+        decryptPassword.addEventListener('keypress', e => {
             if (e.key === 'Enter') openFile();
         });
     }
@@ -86,50 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addWalletBtn) {
         addWalletBtn.addEventListener('click', addWallet);
     }
-
-    // Gestione drag and drop e click per upload (robusto contro eventi nidificati)
-    const uploadZone = document.getElementById('uploadZone');
-    if (uploadZone) {
-            let dragCounter = 0;
-
-            uploadZone.addEventListener('dragenter', e => {
-                e.preventDefault();
-                dragCounter++;
-                uploadZone.classList.add('drag-over');
-            });
-
-            uploadZone.addEventListener('dragover', e => {
-                e.preventDefault();
-                if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-                uploadZone.classList.add('drag-over');
-            });
-
-            uploadZone.addEventListener('dragleave', e => {
-                dragCounter = Math.max(0, dragCounter - 1);
-                if (dragCounter === 0) uploadZone.classList.remove('drag-over');
-            });
-
-            uploadZone.addEventListener('drop', e => {
-                e.preventDefault();
-                e.stopPropagation();
-                dragCounter = 0;
-                uploadZone.classList.remove('drag-over');
-                const files = e.dataTransfer?.files || (e.target?.files);
-                const file = files?.[0];
-                if (file) handleFileUpload({ target: { files: [file] } });
-            });
-
-            uploadZone.addEventListener('click', () => {
-                const fileInput = document.getElementById('fileInput');
-                if (fileInput) fileInput.click();
-            });
-
-            // Evita che il browser apra file trascinati fuori dalla zona
-            window.addEventListener('dragover', e => e.preventDefault());
-            window.addEventListener('drop', e => e.preventDefault());
-    }
-
-    // Gestione toggle sezioni
+    // Handle section toggling
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
     if (togglePasswordBtn) {
         togglePasswordBtn.addEventListener('click', () => toggleSection('passwordContainer', togglePasswordBtn));
@@ -142,9 +84,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleWalletBtn) {
         toggleWalletBtn.addEventListener('click', () => toggleSection('walletContainer', toggleWalletBtn));
     }
+
+    // Handle drag and drop and click for file upload
+    const uploadZone = document.getElementById('uploadZone');
+    if (uploadZone) {
+        uploadZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFileUpload({ target: { files: [file] } });
+        });
+        uploadZone.addEventListener('click', () => {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+            }
+        });
+    }
 });
 
-// Gestione upload file
+// Handle file upload
 function handleFileUpload(event) {
     const files = event.target?.files || event.dataTransfer?.files;
     const file = files?.[0];
@@ -154,7 +118,7 @@ function handleFileUpload(event) {
         return;
     }
 
-    if (file.size > 500 * 1024) {  // Corretto a 0.5 MB
+    if (file.size > 50 * 1024 * 1024) {
         showMessage('File too large (max 0.5 MB). Keep under ~3,000 passwords.', 'error');
         if (event.target) event.target.value = '';
         return;
@@ -194,90 +158,77 @@ function handleFileUpload(event) {
         }
     };
 
+    // Leggi come testo
     reader.readAsText(file);
 }
 
-// Apertura e decrittazione file (simile a home.js)
+// Open file
 async function openFile() {
     if (!uploadedFile) {
         showMessage('Select a valid JSON file first', 'error');
         return;
     }
-
-    const password = document.getElementById('decryptPassword')?.value.trim() || '';
+    
+    const password = document.getElementById('decryptPassword')?.value || '';
     const btn = document.getElementById('decryptBtn');
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening...';
     }
-
-    let rawData = null;
-    let fileType = 'unknown';
-
+    
     try {
-        // STEP 1: Prova V2
+        let data;
         try {
-            const preview = uploadedFile.trim().slice(0, 10);
-            const isV2 = preview.startsWith('AA') || preview.startsWith('AQ') || preview.startsWith('Ag') || preview.startsWith('Aw');
-
-            if (isV2) {
-                rawData = await decryptV2(uploadedFile, password);
-                fileType = 'New (V2 - advanced encryption)';
-            } else {
-                throw new Error('Not V2');
-            }
+            data = password ? 
+                await decryptData(uploadedFile, password) : 
+                JSON.parse(uploadedFile);
         } catch (e) {
-            // STEP 2: Prova V1
-            try {
-                rawData = await decryptOld(uploadedFile, password);
-                fileType = 'Old (V1 - compatibility)';
-            } catch (e2) {
-                // STEP 3: JSON semplice
-                try {
-                    rawData = JSON.parse(uploadedFile);
-                    fileType = 'Unencrypted (plain text)';
-                } catch (e3) {
-                    throw new Error('Wrong password, corrupted file or unsupported format');
-                }
-            }
+            throw new Error('Error parsing or decrypting JSON: ' + e.message);
         }
-
-        // Validazione
-        if (!validateJSONStructure(rawData)) {
-            throw new Error('Invalid file structure (missing passwords/cards/wallets)');
-        }
-
-        // Caricamento con fallback
+        
+        if (!validateJSONStructure(data)) throw new Error('Invalid JSON structure');
+        
+        // Initialize missing sections with empty arrays
         loadedData = {
-            passwords: Array.isArray(rawData.passwords) ? rawData.passwords : [],
-            cards: Array.isArray(rawData.cards) ? rawData.cards : [],
-            wallets: Array.isArray(rawData.wallets) ? rawData.wallets : []
+            passwords: Array.isArray(data.passwords) ? data.passwords : [],
+            cards: Array.isArray(data.cards) ? data.cards : [],
+            wallets: Array.isArray(data.wallets) ? data.wallets : []
         };
-
-        // Aggiungi ID se mancanti
-        ['passwords', 'cards', 'wallets'].forEach(section => {
-            loadedData[section].forEach(item => {
-                if (!item.id) item.id = generateUniqueId();
-            });
+        
+        // Add unique IDs if not present
+        loadedData.passwords.forEach(pwd => {
+            if (!pwd.id) pwd.id = generateUniqueId();
         });
-
+        loadedData.cards.forEach(card => {
+            if (!card.id) card.id = generateUniqueId();
+        });
+        loadedData.wallets.forEach(wallet => {
+            if (!wallet.id) wallet.id = generateUniqueId();
+        });
+        
         sortData();
         displayData(loadedData);
         populateFilters(loadedData);
-
-        // Pulizia UI
-        document.getElementById('decryptPassword').value = '';
-        uploadedFile = uploadedFileName = null;
-        document.getElementById('fileInput').value = '';
-        document.querySelector('.file-name')?.textContent = '';
-
-        showMessage(`File opened successfully! (${fileType})`, 'success');
-    } catch (err) {
-        console.error('Opening error:', err);
-        const msg = password 
-            ? 'Wrong password or corrupted file' 
-            : 'Invalid file. If encrypted, enter the password';
-        showMessage(msg, 'error');
+        
+        if (document.getElementById('decryptPassword')) {
+            document.getElementById('decryptPassword').value = '';
+        }
+        uploadedFile = null;
+        uploadedFileName = null;
+        if (document.getElementById('fileInput')) {
+            document.getElementById('fileInput').value = '';
+        }
+        const fileNameElement = document.querySelector('.file-name');
+        if (fileNameElement) {
+            fileNameElement.textContent = '';
+        }
+        
+        showMessage('File opened successfully!', 'success');
+    } catch (error) {
+        console.error('File opening error:', error);
+        showMessage(password ? 
+            'Incorrect password or corrupted file' : 
+            'Invalid file. If encrypted, enter the password', 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -286,15 +237,16 @@ async function openFile() {
     }
 }
 
-// Validazione struttura JSON
+// Validate JSON structure
 function validateJSONStructure(data) {
+    // Check that data is an object and each section, if present, is an array
     return data && typeof data === 'object' &&
            (data.passwords === undefined || Array.isArray(data.passwords)) &&
            (data.cards === undefined || Array.isArray(data.cards)) &&
            (data.wallets === undefined || Array.isArray(data.wallets));
 }
 
-// Ordinamento alfabetico
+// Sort data
 function sortData() {
     if (!loadedData) return;
     loadedData.passwords.sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
@@ -302,50 +254,56 @@ function sortData() {
     loadedData.wallets.sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
 }
 
-// Visualizzazione dati con bottoni edit/delete
+// Function to handle section toggling
+function toggleSection(containerId, button) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        const isHidden = container.classList.contains('hidden');
+        container.classList.toggle('hidden');
+        button.innerHTML = isHidden ? 
+            `<i class="fas fa-eye-slash"></i> Hide ${containerId.replace('Container', '')}` :
+            `<i class="fas fa-eye"></i> Show ${containerId.replace('Container', '')}`;
+    }
+}
+
+// Display all data
 function displayData(data) {
     displayPasswords(data.passwords);
-    displayCards(data.cards ?? []);
+    displayCards(data.cards || []);
     displayWallets(data.wallets);
 }
 
+// Display passwords
 function displayPasswords(passwords) {
     const container = document.getElementById('passwordContainer');
     if (!container) return;
-
+    
     container.innerHTML = '';
-    if (passwords.length === 0) {
+    
+    if (!passwords.length) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-lock"></i>
                 <p>No passwords saved</p>
-            </div>
-        `;
+            </div>`;
         return;
     }
-
-    passwords.forEach(pwd => {
+    
+    passwords.forEach((pwd, index) => {
         const card = document.createElement('div');
-        card.className = 'data-card';
+        card.className = 'preview-card-item';
         card.innerHTML = `
-            <div class="card-header">
-                <h3>${escapeHtml(pwd.platform)}</h3>
-                <div class="action-buttons">
-                    <button class="btn btn-icon edit-btn" onclick="editItem('password', '${pwd.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-icon delete-btn" onclick="deleteItem('password', '${pwd.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+            <h3 class="editable-field scrollable-text" data-value="${escapeHtml(pwd.platform)}" data-field="platform" data-id="${pwd.id}" data-type="password">${escapeHtml(pwd.platform)}</h3>
             <div class="field-container">
                 <label class="field-label">Username</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(pwd.username)}" data-field="username">${escapeHtml(pwd.username)}</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(pwd.username)}" data-field="username" data-id="${pwd.id}" data-type="password">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.username)}', 'Username')">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Username')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -353,13 +311,27 @@ function displayPasswords(passwords) {
             <div class="field-container">
                 <label class="field-label">Password</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(pwd.password)}" data-field="password">••••••••••••</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(pwd.password)}" data-field="password" data-id="${pwd.id}" data-type="password">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Password')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Password')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">Notes</label>
+                <div class="content-wrapper">
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(pwd.notes || '-')}" data-field="notes" data-id="${pwd.id}" data-type="password" data-notes="true">${pwd.notes ? '••••••••••••' : '-'}</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -367,79 +339,58 @@ function displayPasswords(passwords) {
             <div class="field-container">
                 <label class="field-label">URL</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(pwd.url || '-')}" data-field="url">${escapeHtml(pwd.url || '-')}</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.url || '-')}', 'URL')">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="field-container">
-                <label class="field-label">Notes</label>
-                <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(pwd.notes || '-')}" data-field="notes">${pwd.notes ? '••••••••••••' : '-'}</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Notes')">
-                        <i class="fas fa-copy"></i>
-                    </button>
+                    <span href="${escapeHtml(pwd.url || '#')}" class="editable-field url-field scrollable-text" data-value="${escapeHtml(pwd.url || '-')}" data-field="url" data-id="${pwd.id}" data-type="password" target="_blank" rel="noopener noreferrer">${escapeHtml(pwd.url || '-')}</span>
                 </div>
             </div>
             <div class="field-container">
                 <label class="field-label">Category</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(pwd.category || '-')}" data-field="category">${escapeHtml(pwd.category || '-')}</span>
+                    <span class="editable-field scrollable-text" data-value="${escapeHtml(pwd.category || '-')}" data-field="category" data-id="${pwd.id}" data-type="password">${escapeHtml(pwd.category || '-')}</span>
                 </div>
+            </div>
+            <div class="btn-container">
+                <button class="btn btn-danger" onclick="showDeleteModal('${pwd.id}', 'password')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
             </div>
         `;
         container.appendChild(card);
     });
+
+    addEditableEventListeners();
 }
 
+// Display cards
 function displayCards(cards) {
     const container = document.getElementById('cardContainer');
     if (!container) return;
-
+    
     container.innerHTML = '';
-    if (cards.length === 0) {
+    
+    if (!cards.length) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-credit-card"></i>
                 <p>No cards saved</p>
-            </div>
-        `;
+            </div>`;
         return;
     }
-
-    cards.forEach(card => {
-        const cardElem = document.createElement('div');
-        cardElem.className = 'data-card';
-        cardElem.innerHTML = `
-            <div class="card-header">
-                <h3>${escapeHtml(card.issuer)}</h3>
-                <div class="action-buttons">
-                    <button class="btn btn-icon edit-btn" onclick="editItem('card', '${card.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-icon delete-btn" onclick="deleteItem('card', '${card.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+    
+    cards.forEach((card, index) => {
+        const cardElement = document.createElement('div');
+        cardElement.className = 'preview-card-item';
+        cardElement.innerHTML = `
+            <h3 class="editable-field scrollable-text" data-value="${escapeHtml(card.issuer)}" data-field="issuer" data-id="${card.id}" data-type="card">${escapeHtml(card.issuer)}</h3>    
             <div class="field-container">
                 <label class="field-label">PAN</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(card.pan)}" data-field="pan">••••••••••••</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(card.pan)}" data-field="pan" data-id="${card.id}" data-type="card">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'PAN')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'PAN')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -447,24 +398,27 @@ function displayCards(cards) {
             <div class="field-container">
                 <label class="field-label">Expiry Date</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(card.expiryDate)}" data-field="expiryDate">${escapeHtml(card.expiryDate)}</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(card.expiryDate)}', 'Expiry Date')">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="field-container">
-                <label class="field-label">CVV</label>
-                <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(card.cvv)}" data-field="cvv">••••</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(card.expiryDate)}" data-field="expiryDate" data-id="${card.id}" data-type="card">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'CVV')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Expiry Date')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
+                <label class="field-label">CVV/CVC2</label>
+                <div class="content-wrapper">
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(card.cvv)}" data-field="cvv" data-id="${card.id}" data-type="card">••••••••••••</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'CVV/CVC2')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -472,13 +426,13 @@ function displayCards(cards) {
             <div class="field-container">
                 <label class="field-label">PIN</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(card.pin)}" data-field="pin">••••</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(card.pin)}" data-field="pin" data-id="${card.id}" data-type="card">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'PIN')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'PIN')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -486,13 +440,13 @@ function displayCards(cards) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(card.notes || '-')}" data-field="notes">${card.notes ? '••••••••••••' : '-'}</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(card.notes || '-')}" data-field="notes" data-id="${card.id}" data-type="card" data-notes="true">${card.notes ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Notes')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -500,51 +454,52 @@ function displayCards(cards) {
             <div class="field-container">
                 <label class="field-label">Network</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(card.network || '-')}" data-field="network">${escapeHtml(card.network || '-')}</span>
+                    <span class="editable-field scrollable-text" data-value="${escapeHtml(card.network || '-')}" data-field="network" data-id="${card.id}" data-type="card">${escapeHtml(card.network || '-')}</span>
                 </div>
             </div>
+            <div class="btn-container">
+                <button class="btn btn-danger" onclick="showDeleteModal('${card.id}', 'card')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
         `;
-        container.appendChild(cardElem);
+        container.appendChild(cardElement);
     });
+
+    addEditableEventListeners();
 }
 
+// Display wallets
 function displayWallets(wallets) {
     const container = document.getElementById('walletContainer');
     if (!container) return;
-
+    
     container.innerHTML = '';
-    if (wallets.length === 0) {
+    
+    if (!wallets.length) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-wallet"></i>
                 <p>No wallets saved</p>
-            </div>
-        `;
+            </div>`;
         return;
     }
-
-    wallets.forEach(wallet => {
+    
+    wallets.forEach((wallet, index) => {
         const card = document.createElement('div');
-        card.className = 'data-card';
+        card.className = 'preview-card-item';
         card.innerHTML = `
-            <div class="card-header">
-                <h3>${escapeHtml(wallet.wallet)}</h3>
-                <div class="action-buttons">
-                    <button class="btn btn-icon edit-btn" onclick="editItem('wallet', '${wallet.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-icon delete-btn" onclick="deleteItem('wallet', '${wallet.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+            <h3 class="editable-field scrollable-text" data-value="${escapeHtml(wallet.wallet)}" data-field="wallet" data-id="${wallet.id}" data-type="wallet">${escapeHtml(wallet.wallet)}</h3>
             <div class="field-container">
                 <label class="field-label">Username</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(wallet.username || '-')}" data-field="username">${escapeHtml(wallet.username || '-')}</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(wallet.username)}" data-field="username" data-id="${wallet.id}" data-type="wallet">••••••••••••</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.username || '-')}', 'Username')">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Username')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -552,13 +507,13 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Password</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(wallet.password)}" data-field="password">••••••••••••</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(wallet.password)}" data-field="password" data-id="${wallet.id}" data-type="wallet">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Password')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Password')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -566,13 +521,13 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Key</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(wallet.key || '-')}" data-field="key">${wallet.key ? '••••••••••••' : '-'}</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(wallet.key || '-')}" data-field="key" data-id="${wallet.id}" data-type="wallet" data-key="true">${wallet.key ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Key')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Key')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -580,10 +535,13 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Address</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(wallet.address || '-')}" data-field="address">${escapeHtml(wallet.address || '-')}</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(wallet.address || '-')}" data-field="address" data-id="${wallet.id}" data-type="wallet" data-address="true">${wallet.address ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.address || '-')}', 'Address')">
+                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Address')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -591,13 +549,13 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content" data-value="${escapeHtml(wallet.notes || '-')}" data-field="notes">${wallet.notes ? '••••••••••••' : '-'}</span>
+                    <span class="editable-field hidden-content scrollable-text" data-value="${escapeHtml(wallet.notes || '-')}" data-field="notes" data-id="${wallet.id}" data-type="wallet" data-notes="true">${wallet.notes ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Notes')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.editable-field').dataset.value, 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -605,46 +563,256 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Type</label>
                 <div class="content-wrapper">
-                    <span class="scrollable-text" data-value="${escapeHtml(wallet.type || '-')}" data-field="type">${escapeHtml(wallet.type || '-')}</span>
+                    <span class="editable-field scrollable-text" data-value="${escapeHtml(wallet.type || '-')}" data-field="type" data-id="${wallet.id}" data-type="wallet">${escapeHtml(wallet.type || '-')}</span>
                 </div>
+            </div>
+            <div class="btn-container">
+                <button class="btn btn-danger" onclick="showDeleteModal('${wallet.id}', 'wallet')">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
             </div>
         `;
         container.appendChild(card);
     });
+
+    addEditableEventListeners();
 }
 
-// Toggle visibilità (simile a home.js)
+// Add event listeners to all editable fields
+function addEditableEventListeners() {
+    document.querySelectorAll('.editable-field').forEach(field => {
+        field.removeEventListener('click', handleFieldEdit);
+        field.addEventListener('click', handleFieldEdit);
+    });
+}
+
+// Handle field editing with confirmation
+function handleFieldEdit(event) {
+    const element = event.target;
+    if (element.tagName !== 'SPAN' && element.tagName !== 'A' && element.tagName !== 'H3') return;
+
+    const value = element.dataset.value;
+    const field = element.dataset.field;
+    const id = element.dataset.id;
+    const type = element.dataset.type;
+
+    // Create container for input and buttons
+    const container = document.createElement('div');
+    container.className = 'edit-field-container';
+
+    // Create input
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value === '-' ? '' : value;
+    input.className = 'input-field';
+    container.appendChild(input);
+
+    // Create Confirm and Cancel buttons
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'button-group edit-buttons';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'btn btn-primary btn-icon';
+    confirmBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+    confirmBtn.title = 'Confirm edit';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-secondary btn-icon';
+    cancelBtn.innerHTML = '<i class="fas fa-times"></i>';
+    cancelBtn.title = 'Cancel';
+    buttonGroup.appendChild(confirmBtn);
+    buttonGroup.appendChild(cancelBtn);
+    container.appendChild(buttonGroup);
+
+    // Handle confirmation with modal
+    confirmBtn.addEventListener('click', () => {
+        const newValue = input.value.trim();
+        
+        // Show confirmation modal
+        showEditConfirmationModal(value, newValue, () => {
+            applyEdit(element, container, newValue, field, id, type);
+        }, () => {
+            cancelEdit(element, container, value, field, id, type);
+        });
+    });
+
+    // Handle cancellation
+    cancelBtn.addEventListener('click', () => {
+        cancelEdit(element, container, value, field, id, type);
+    });
+
+    // Handle keyboard input
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            confirmBtn.click();
+        } else if (e.key === 'Escape') {
+            cancelBtn.click();
+        }
+    });
+
+    // Replace the element with the container
+    element.replaceWith(container);
+    input.focus();
+    input.select();
+}
+
+// Show edit confirmation modal
+function showEditConfirmationModal(oldValue, newValue, onConfirm, onCancel) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Confirm Edit';
+    modalContent.appendChild(title);
+    
+    const message = document.createElement('p');
+    message.innerHTML = `Do you want to save this change?<br><br><strong>From:</strong> ${escapeHtml(oldValue || '-')}<br><strong>To:</strong> ${escapeHtml(newValue || '-')}`;
+    modalContent.appendChild(message);
+    
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'btn-container';
+    
+    const confirmBtnModal = document.createElement('button');
+    confirmBtnModal.className = 'btn btn-primary';
+    confirmBtnModal.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save';
+    
+    const cancelBtnModal = document.createElement('button');
+    cancelBtnModal.className = 'btn btn-secondary';
+    cancelBtnModal.innerHTML = '<i class="fas fa-times"></i> Cancel';
+    
+    btnContainer.appendChild(confirmBtnModal);
+    btnContainer.appendChild(cancelBtnModal);
+    modalContent.appendChild(btnContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    confirmBtnModal.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        onConfirm();
+    });
+    
+    cancelBtnModal.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        onCancel();
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+            onCancel();
+        }
+    });
+}
+
+// Apply the edit to the field
+function applyEdit(originalElement, container, newValue, field, id, type) {
+    const isSensitive = field === 'username' || field === 'password' || field === 'notes' || 
+                       field === 'pan' || field === 'expiryDate' || 
+                       field === 'cvv' || field === 'pin' || field === 'username' || 
+                       field === 'key' || field === 'address';
+    
+    if (field === 'url') {
+        const newElement = document.createElement('a');
+        newElement.href = newValue || '#';
+        newElement.className = 'editable-field url-field scrollable-text';
+        newElement.dataset.value = newValue || '-';
+        newElement.dataset.field = field;
+        newElement.dataset.id = id;
+        newElement.dataset.type = type;
+        newElement.textContent = newValue || '-';
+        newElement.target = '_blank';
+        newElement.rel = 'noopener noreferrer';
+        container.replaceWith(newElement);
+    } else {
+        const tagName = originalElement.tagName === 'H3' ? 'h3' : 'span';
+        const newElement = document.createElement(tagName);
+        newElement.textContent = isSensitive && newValue ? '••••••••••••' : (newValue || '-');
+        newElement.dataset.value = newValue || '-';
+        newElement.dataset.field = field;
+        newElement.dataset.id = id;
+        newElement.dataset.type = type;
+        newElement.className = `editable-field scrollable-text${isSensitive ? ' hidden-content' : ''}${field === 'url' ? ' url-field' : ''}`;
+        if (isSensitive && (field === 'notes' || field === 'key' || field === 'address')) {
+            newElement.dataset[field] = 'true';
+        }
+        container.replaceWith(newElement);
+    }
+
+    // Update the data
+    if (type === 'password') {
+        editPassword(id, field, newValue);
+    } else if (type === 'card') {
+        editCard(id, field, newValue);
+    } else if (type === 'wallet') {
+        editWallet(id, field, newValue);
+    }
+
+    addEditableEventListeners();
+    showMessage('Edit saved successfully!', 'success');
+}
+
+// Cancel the edit
+function cancelEdit(originalElement, container, value, field, id, type) {
+    if (field === 'url') {
+        const newElement = document.createElement('a');
+        newElement.href = value || '#';
+        newElement.className = 'editable-field url-field scrollable-text';
+        newElement.dataset.value = value || '-';
+        newElement.dataset.field = field;
+        newElement.dataset.id = id;
+        newElement.dataset.type = type;
+        newElement.textContent = value || '-';
+        newElement.target = '_blank';
+        newElement.rel = 'noopener noreferrer';
+        container.replaceWith(newElement);
+    } else {
+        const tagName = originalElement.tagName === 'H3' ? 'h3' : 'span';
+        const newElement = document.createElement(tagName);
+        const isSensitive = field === 'username' || field === 'password' || field === 'notes' || 
+                            field === 'pan' || field === 'expiryDate' || 
+                            field === 'cvv' || field === 'pin' || field === 'username' || 
+                            field === 'key' || field === 'address';
+        newElement.textContent = isSensitive && value !== '-' ? '••••••••••••' : (value || '-');
+        newElement.dataset.value = value || '-';
+        newElement.dataset.field = field;
+        newElement.dataset.id = id;
+        newElement.dataset.type = type;
+        newElement.className = `editable-field scrollable-text${isSensitive ? ' hidden-content' : ''}${field === 'url' ? ' url-field' : ''}`;
+        if (isSensitive && (field === 'notes' || field === 'key' || field === 'address')) {
+            newElement.dataset[field] = 'true';
+        }
+        container.replaceWith(newElement);
+    }
+
+    addEditableEventListeners();
+}
+
+// Handle hidden content
 function toggleVisibility(button) {
     const parent = button.closest('.field-container');
     const span = parent?.querySelector('.hidden-content');
     if (!span) return;
 
     const value = span.dataset.value;
-    const isHidden = span.textContent === '••••••••••••' || span.textContent === '••••' || span.textContent === '-';
-
+    const isHidden = span.textContent === '••••••••••••' || span.textContent === '-';
+    
     if (isHidden && value !== '-') {
         span.textContent = value;
         button.innerHTML = '<i class="fas fa-eye-slash"></i>';
     } else {
-        span.textContent = value && value !== '-' ? (span.textContent.length > 4 ? '••••••••••••' : '••••') : '-';
+        span.textContent = value && value !== '-' ? '••••••••••••' : '-';
         button.innerHTML = '<i class="fas fa-eye"></i>';
     }
 }
 
-// Copia in clipboard (simile a home.js)
+// Copy to clipboard
 function copyToClipboard(text, type) {
     if (text === '-') return;
-
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(text)
-            .then(() => showMessage(`${type} copied to clipboard!`, 'success'))
-            .catch(() => showMessage('Error during copying', 'error'));
-    } else {
-        fallbackCopy(text, 
-            () => showMessage(`${type} copied to clipboard!`, 'success'),
-            () => showMessage('Error during copying', 'error')
-        );
-    }
+    navigator.clipboard.writeText(text)
+        .then(() => showMessage(`${type} copied to clipboard!`, 'success'))
+        .catch(() => showMessage('Error during copying', 'error'));
 }
 
 function fallbackCopy(text, onSuccess, onError) {
@@ -657,7 +825,8 @@ function fallbackCopy(text, onSuccess, onError) {
     textarea.select();
 
     try {
-        if (document.execCommand('copy')) {
+        const result = document.execCommand('copy');
+        if (result) {
             onSuccess();
         } else {
             onError();
@@ -669,26 +838,190 @@ function fallbackCopy(text, onSuccess, onError) {
     document.body.removeChild(textarea);
 }
 
-// Filtraggio dati (simile a home.js)
-function filterData() {
-    if (!loadedData) return;
+// Add password
+function addPassword() {
+    const newPassword = {
+        platform: '-',
+        username: '',
+        password: generateRandomPassword(),
+        notes: '',
+        url: '',
+        category: '',
+        id: generateUniqueId()
+    };
+    loadedData.passwords.push(newPassword);
+    sortData();
+    displayData(loadedData);
+    populateFilters(loadedData);
+    showMessage('New password added! Click on fields to edit them.', 'success');
+}
 
+// Add card
+function addCard() {
+    if (!loadedData.cards) loadedData.cards = [];
+    const newCard = {
+        issuer: '-',
+        pan: '',
+        expiryDate: '',
+        cvv: '',
+        pin: '',
+        notes: '',
+        network: '',
+        id: generateUniqueId()
+    };
+    loadedData.cards.push(newCard);
+    sortData();
+    displayData(loadedData);
+    populateFilters(loadedData);
+    showMessage('New card added! Click on fields to edit them.', 'success');
+}
+
+// Add wallet
+function addWallet() {
+    const newWallet = {
+        wallet: '-',
+        username: '',
+        password: generateRandomPassword(),
+        key: '',
+        address: '',
+        notes: '',
+        type: '',
+        id: generateUniqueId(),
+    };
+    loadedData.wallets.push(newWallet);
+    sortData();
+    displayData(loadedData);
+    populateFilters(loadedData);
+    showMessage('New wallet added! Click on fields to edit them.', 'success');
+}
+
+// Edit password
+function editPassword(id, field, value) {
+    const password = loadedData.passwords.find(pwd => pwd.id === id);
+    if (password) {
+        password[field] = value;
+        populateFilters(loadedData);
+        sortData();
+        displayData(loadedData);
+    }
+}
+
+// Edit card
+function editCard(id, field, value) {
+    if (loadedData.cards) {
+        const card = loadedData.cards.find(card => card.id === id);
+        if (card) {
+            card[field] = value;
+            populateFilters(loadedData);
+            sortData();
+            displayData(loadedData);
+        }
+    }
+}
+
+// Edit wallet
+function editWallet(id, field, value) {
+    const wallet = loadedData.wallets.find(wallet => wallet.id === id);
+    if (wallet) {
+        wallet[field] = value;
+        populateFilters(loadedData);
+        sortData();
+        displayData(loadedData);
+    }
+}
+
+// Show modal for confirming deletion
+function showDeleteModal(id, type) {
+    let itemName = '';
+    if (type === 'password') {
+        const pwd = loadedData.passwords.find(pwd => pwd.id === id);
+        itemName = pwd?.platform || 'Password';
+    } else if (type === 'card') {
+        const card = loadedData.cards.find(card => card.id === id);
+        itemName = card?.issuer || 'Card';
+    } else if (type === 'wallet') {
+        const wallet = loadedData.wallets.find(wallet => wallet.id === id);
+        itemName = wallet?.wallet || 'Wallet';
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+    
+    const title = document.createElement('h3');
+    title.textContent = 'Confirm Deletion';
+    modalContent.appendChild(title);
+    
+    const message = document.createElement('p');
+    message.innerHTML = `Are you sure you want to delete <strong>"${escapeHtml(itemName)}"</strong>?<br><br>This action cannot be undone.`;
+    modalContent.appendChild(message);
+    
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'btn-container';
+    
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'btn btn-danger';
+    confirmBtn.innerHTML = '<i class="fas fa-trash"></i> Delete';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.innerHTML = '<i class="fas fa-times"></i> Cancel';
+    
+    btnContainer.appendChild(confirmBtn);
+    btnContainer.appendChild(cancelBtn);
+    modalContent.appendChild(btnContainer);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    confirmBtn.addEventListener('click', () => {
+        if (type === 'password') {
+            loadedData.passwords = loadedData.passwords.filter(pwd => pwd.id !== id);
+            showMessage('Password deleted successfully!', 'success');
+        } else if (type === 'card') {
+            loadedData.cards = loadedData.cards.filter(card => card.id !== id);
+            showMessage('Card deleted successfully!', 'success');
+        } else if (type === 'wallet') {
+            loadedData.wallets = loadedData.wallets.filter(wallet => wallet.id !== id);
+            showMessage('Wallet deleted successfully!', 'success');
+        }
+        displayData(loadedData);
+        populateFilters(loadedData);
+        document.body.removeChild(modal);
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    });
+}
+
+// Filter data
+function filterData() {
     const passwordSearchInput = document.getElementById('passwordSearchInput');
     const categoryFilter = document.getElementById('categoryFilter');
     const cardSearchInput = document.getElementById('cardSearchInput');
     const circuitFilter = document.getElementById('circuitFilter');
     const walletSearchInput = document.getElementById('walletSearchInput');
     const typeFilter = document.getElementById('typeFilter');
-
+    
     if (!passwordSearchInput || !categoryFilter || !cardSearchInput || !circuitFilter || !walletSearchInput || !typeFilter) return;
-
+    
     const passwordSearch = passwordSearchInput.value.toLowerCase();
     const category = categoryFilter.value.toLowerCase();
     const cardSearch = cardSearchInput.value.toLowerCase();
     const circuit = circuitFilter.value.toLowerCase();
     const walletSearch = walletSearchInput.value.toLowerCase();
     const type = typeFilter.value.toLowerCase();
-
+    
+    // Filter passwords
     const filteredPasswords = loadedData.passwords.filter(pwd => {
         const searchMatch = !passwordSearch || 
             pwd.platform.toLowerCase().includes(passwordSearch) ||
@@ -697,14 +1030,15 @@ function filterData() {
             (pwd.url && pwd.url.toLowerCase().includes(passwordSearch)) ||
             (pwd.notes && pwd.notes.toLowerCase().includes(passwordSearch)) ||
             (pwd.category && pwd.category.toLowerCase().includes(passwordSearch));
-
+        
         const categoryMatch = !category || 
             (pwd.category && pwd.category.toLowerCase() === category);
-
+        
         return searchMatch && categoryMatch;
     }).sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
-
-    const filteredCards = (loadedData.cards ?? []).filter(card => {
+    
+    // Filter cards
+    const filteredCards = (loadedData.cards || []).filter(card => {
         const searchMatch = !cardSearch || 
             card.issuer.toLowerCase().includes(cardSearch) ||
             card.pan.toLowerCase().includes(cardSearch) ||
@@ -713,13 +1047,14 @@ function filterData() {
             card.pin.toLowerCase().includes(cardSearch) ||
             (card.network && card.network.toLowerCase().includes(cardSearch)) ||
             (card.notes && card.notes.toLowerCase().includes(cardSearch));
-
+        
         const circuitMatch = !circuit || 
             (card.network && card.network.toLowerCase() === circuit);
-
+        
         return searchMatch && circuitMatch;
     }).sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
-
+    
+    // Filter wallets
     const filteredWallets = loadedData.wallets.filter(wallet => {
         const searchMatch = !walletSearch || 
             wallet.wallet.toLowerCase().includes(walletSearch) ||
@@ -729,34 +1064,35 @@ function filterData() {
             (wallet.address && wallet.address.toLowerCase().includes(walletSearch)) ||
             (wallet.type && wallet.type.toLowerCase().includes(walletSearch)) ||
             (wallet.notes && wallet.notes.toLowerCase().includes(walletSearch));
-
+        
         const typeMatch = !type || 
             (wallet.type && wallet.type.toLowerCase() === type);
-
+        
         return searchMatch && typeMatch;
     }).sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
-
+    
     displayPasswords(filteredPasswords);
     displayCards(filteredCards);
     displayWallets(filteredWallets);
 }
 
-// Popolamento filtri (simile a home.js)
+// Populate all filters
 function populateFilters(data) {
     populateCategoryFilter(data);
     populateCircuitFilter(data);
     populateTypeFilter(data);
 }
 
+// Populate category filter for passwords
 function populateCategoryFilter(data) {
     const select = document.getElementById('categoryFilter');
     if (!select) return;
-
+    
     const categories = new Set();
     data.passwords.forEach(pwd => {
         if (pwd.category) categories.add(pwd.category);
     });
-
+    
     select.innerHTML = '<option value="">All categories</option>';
     Array.from(categories).sort().forEach(cat => {
         const option = document.createElement('option');
@@ -766,15 +1102,16 @@ function populateCategoryFilter(data) {
     });
 }
 
+// Populate network filter for cards
 function populateCircuitFilter(data) {
     const select = document.getElementById('circuitFilter');
     if (!select) return;
-
+    
     const networks = new Set();
-    (data.cards ?? []).forEach(card => {
+    (data.cards || []).forEach(card => {
         if (card.network) networks.add(card.network);
     });
-
+    
     select.innerHTML = '<option value="">All networks</option>';
     Array.from(networks).sort().forEach(circ => {
         const option = document.createElement('option');
@@ -784,15 +1121,16 @@ function populateCircuitFilter(data) {
     });
 }
 
+// Populate type filter for wallets
 function populateTypeFilter(data) {
     const select = document.getElementById('typeFilter');
     if (!select) return;
-
+    
     const types = new Set();
     data.wallets.forEach(wallet => {
         if (wallet.type) types.add(wallet.type);
     });
-
+    
     select.innerHTML = '<option value="">All types</option>';
     Array.from(types).sort().forEach(type => {
         const option = document.createElement('option');
@@ -802,7 +1140,7 @@ function populateTypeFilter(data) {
     });
 }
 
-// Download file (crittato o plain)
+// Download file
 async function downloadFile(encrypted) {
     if (!loadedData) {
         showMessage('No data to save', 'error');
@@ -820,7 +1158,7 @@ async function downloadFile(encrypted) {
         let content;
         if (encrypted) {
             showMessage('Encrypting...', 'info');
-            content = await encryptV2(loadedData, password);  // Usa V2
+            content = await encryptData(loadedData, password);
         } else {
             content = JSON.stringify(loadedData, null, 2);
         }
@@ -842,7 +1180,7 @@ async function downloadFile(encrypted) {
     }
 }
 
-// Genera password random
+// Generate a random password
 function generateRandomPassword(length = 16) {
     const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?éèçò°ùà§';
     const array = new Uint8Array(length);
@@ -855,297 +1193,11 @@ function generateRandomPassword(length = 16) {
     return password;
 }
 
-// Aggiungi password (modale)
-function addPassword() {
-    showEditModal('password', null);
-}
-
-// Aggiungi card
-function addCard() {
-    showEditModal('card', null);
-}
-
-// Aggiungi wallet
-function addWallet() {
-    showEditModal('wallet', null);
-}
-
-// Modifica item (modale)
-function editItem(type, id) {
-    const item = findItemById(type, id);
-    if (!item) return;
-    showEditModal(type, item);
-}
-
-// Trova item per ID
-function findItemById(type, id) {
-    if (type === 'password') return loadedData.passwords.find(p => p.id === id);
-    if (type === 'card') return loadedData.cards?.find(c => c.id === id);
-    if (type === 'wallet') return loadedData.wallets.find(w => w.id === id);
-    return null;
-}
-
-// Mostra modale edit/add
-function showEditModal(type, item) {
-    const isAdd = !item;
-    const title = isAdd ? `Add ${type.charAt(0).toUpperCase() + type.slice(1)}` : `Edit ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>${title}</h2>
-            <form id="editForm">
-                ${getFormFields(type, item)}
-                <div class="btn-container">
-                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    const form = modal.querySelector('#editForm');
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        saveItem(type, item?.id, form);
-        document.body.removeChild(modal);
-    });
-
-    const cancelBtn = modal.querySelector('#cancelBtn');
-    cancelBtn.addEventListener('click', () => document.body.removeChild(modal));
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) document.body.removeChild(modal);
-    });
-
-    // Aggiungi listener per generate password se password field
-    if (type === 'password' || type === 'wallet') {
-        const genBtn = form.querySelector('#generatePasswordBtn');
-        if (genBtn) {
-            genBtn.addEventListener('click', () => {
-                const pwdInput = form.querySelector('#password');
-                if (pwdInput) pwdInput.value = generateRandomPassword();
-            });
-        }
-    }
-}
-
-// Campi form per tipo
-function getFormFields(type, item) {
-    if (type === 'password') {
-        return `
-            <div class="form-group">
-                <label for="platform">Platform</label>
-                <input type="text" id="platform" value="${escapeHtml(item?.platform || '')}" required>
-            </div>
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" value="${escapeHtml(item?.username || '')}" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <div class="input-with-btn">
-                    <input type="text" id="password" value="${escapeHtml(item?.password || '')}" required>
-                    <button type="button" id="generatePasswordBtn" class="btn btn-secondary"><i class="fas fa-random"></i> Generate</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="url">URL</label>
-                <input type="url" id="url" value="${escapeHtml(item?.url || '')}">
-            </div>
-            <div class="form-group">
-                <label for="notes">Notes</label>
-                <textarea id="notes">${escapeHtml(item?.notes || '')}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="category">Category</label>
-                <input type="text" id="category" value="${escapeHtml(item?.category || '')}">
-            </div>
-        `;
-    } else if (type === 'card') {
-        return `
-            <div class="form-group">
-                <label for="issuer">Issuer</label>
-                <input type="text" id="issuer" value="${escapeHtml(item?.issuer || '')}" required>
-            </div>
-            <div class="form-group">
-                <label for="pan">PAN</label>
-                <input type="text" id="pan" value="${escapeHtml(item?.pan || '')}" required>
-            </div>
-            <div class="form-group">
-                <label for="expiryDate">Expiry Date</label>
-                <input type="text" id="expiryDate" value="${escapeHtml(item?.expiryDate || '')}" required placeholder="MM/YY">
-            </div>
-            <div class="form-group">
-                <label for="cvv">CVV</label>
-                <input type="text" id="cvv" value="${escapeHtml(item?.cvv || '')}" required>
-            </div>
-            <div class="form-group">
-                <label for="pin">PIN</label>
-                <input type="text" id="pin" value="${escapeHtml(item?.pin || '')}" required>
-            </div>
-            <div class="form-group">
-                <label for="notes">Notes</label>
-                <textarea id="notes">${escapeHtml(item?.notes || '')}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="network">Network</label>
-                <input type="text" id="network" value="${escapeHtml(item?.network || '')}">
-            </div>
-        `;
-    } else if (type === 'wallet') {
-        return `
-            <div class="form-group">
-                <label for="wallet">Wallet</label>
-                <input type="text" id="wallet" value="${escapeHtml(item?.wallet || '')}" required>
-            </div>
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" value="${escapeHtml(item?.username || '')}">
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <div class="input-with-btn">
-                    <input type="text" id="password" value="${escapeHtml(item?.password || '')}" required>
-                    <button type="button" id="generatePasswordBtn" class="btn btn-secondary"><i class="fas fa-random"></i> Generate</button>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="key">Key</label>
-                <textarea id="key">${escapeHtml(item?.key || '')}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="address">Address</label>
-                <input type="text" id="address" value="${escapeHtml(item?.address || '')}">
-            </div>
-            <div class="form-group">
-                <label for="notes">Notes</label>
-                <textarea id="notes">${escapeHtml(item?.notes || '')}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="type">Type</label>
-                <input type="text" id="type" value="${escapeHtml(item?.type || '')}">
-            </div>
-        `;
-    }
-    return '';
-}
-
-// Salva item da form
-function saveItem(type, id, form) {
-    const newItem = {};
-    const inputs = form.querySelectorAll('input, textarea');
-    inputs.forEach(input => {
-        newItem[input.id] = input.value.trim();
-    });
-
-    if (type === 'password') {
-        if (id) {
-            const index = loadedData.passwords.findIndex(p => p.id === id);
-            if (index !== -1) loadedData.passwords[index] = { ...loadedData.passwords[index], ...newItem };
-        } else {
-            newItem.id = generateUniqueId();
-            loadedData.passwords.push(newItem);
-        }
-    } else if (type === 'card') {
-        if (id) {
-            const index = loadedData.cards?.findIndex(c => c.id === id);
-            if (index !== -1) loadedData.cards[index] = { ...loadedData.cards[index], ...newItem };
-        } else {
-            newItem.id = generateUniqueId();
-            loadedData.cards.push(newItem);
-        }
-    } else if (type === 'wallet') {
-        if (id) {
-            const index = loadedData.wallets.findIndex(w => w.id === id);
-            if (index !== -1) loadedData.wallets[index] = { ...loadedData.wallets[index], ...newItem };
-        } else {
-            newItem.id = generateUniqueId();
-            loadedData.wallets.push(newItem);
-        }
-    }
-
-    sortData();
-    displayData(loadedData);
-    populateFilters(loadedData);
-    showMessage('Item saved successfully!', 'success');
-}
-
-// Elimina item con conferma
-function deleteItem(type, id) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h2>Confirm Delete</h2>
-            <p>Are you sure you want to delete this item?</p>
-            <div class="btn-container">
-                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    const confirmBtn = modal.querySelector('#confirmDeleteBtn');
-    confirmBtn.addEventListener('click', () => {
-        if (type === 'password') {
-            loadedData.passwords = loadedData.passwords.filter(p => p.id !== id);
-            showMessage('Password deleted successfully!', 'success');
-        } else if (type === 'card') {
-            loadedData.cards = loadedData.cards?.filter(c => c.id !== id);
-            showMessage('Card deleted successfully!', 'success');
-        } else if (type === 'wallet') {
-            loadedData.wallets = loadedData.wallets.filter(w => w.id !== id);
-            showMessage('Wallet deleted successfully!', 'success');
-        }
-        displayData(loadedData);
-        populateFilters(loadedData);
-        document.body.removeChild(modal);
-    });
-
-    const cancelBtn = modal.querySelector('#cancelBtn');
-    cancelBtn.addEventListener('click', () => document.body.removeChild(modal));
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) document.body.removeChild(modal);
-    });
-}
-
-// Toggle sezione (simile a home.js)
-function toggleSection(containerId, button) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const isHidden = button.innerHTML.includes('eye-slash');
-    const spans = container.querySelectorAll('.hidden-content');
-
-    spans.forEach(span => {
-        const value = span.dataset.value;
-        if (isHidden) {
-            span.textContent = value && value !== '-' ? (span.textContent.length > 4 ? '••••••••••••' : '••••') : '-';
-        } else {
-            span.textContent = value;
-        }
-    });
-
-    const icons = container.querySelectorAll('.toggle-password i');
-    icons.forEach(icon => {
-        icon.className = isHidden ? 'fas fa-eye' : 'fas fa-eye-slash';
-    });
-
-    button.innerHTML = isHidden 
-        ? '<i class="fas fa-eye-slash"></i> Hide All' 
-        : '<i class="fas fa-eye"></i> Show All';
-}
-
-// Mostra messaggio toast (simile a home.js)
+// Utility to show toast messages
 function showMessage(text, type) {
     const oldMessage = document.querySelector('.toast-message');
     if (oldMessage) oldMessage.remove();
-
+    
     const message = document.createElement('div');
     message.className = `toast-message toast-${type}`;
     message.textContent = text;
@@ -1163,7 +1215,7 @@ function showMessage(text, type) {
         z-index: 10000;
         animation: slideIn 0.3s ease;
     `;
-
+    
     document.body.appendChild(message);
     setTimeout(() => {
         message.style.animation = 'slideOut 0.3s ease';
@@ -1171,7 +1223,7 @@ function showMessage(text, type) {
     }, 3000);
 }
 
-// Escape HTML
+// Utility to escape HTML
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');

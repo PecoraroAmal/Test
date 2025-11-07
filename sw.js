@@ -1,21 +1,21 @@
-const CACHE_NAME = 'Test-cache-v2.9';
+const CACHE_NAME = 'Test-cache-v3.0';
 const urlsToCache = [
-  'index.html?v=2.9',
-  'edit.html?v=2.9',
-  'privacy-policy.html?v=2.9',
-  'cookie-policy.html?v=2.9',
-  'info.html?v=2.9',
-  'informazioni.html?v=2.9',
-  'download.html?v=2.9',
-  'scarica.html?v=2.9',
-  'css/style.css?v=2.9',
-  'css/policy.css?v=2.9',
-  '/Test/js/crypto.js?v=2.9',
-  '/Test/js/edit.js?v=2.9',
-  '/Test/js/home.js?v=2.9',
-  '/Test/js/info.js?v=2.9',
-  '/Test/js/app.js?v=2.9',
-  '/Test/js/utils.js?v=2.9',
+  '/Test/index.html?v=3.0',
+  '/Test/edit.html?v=3.0',
+  '/Test/privacy-policy.html?v=3.0',
+  '/Test/cookie-policy.html?v=3.0',
+  '/Test/info.html?v=3.0',
+  '/Test/informazioni.html?v=3.0',
+  '/Test/download.html?v=3.0',
+  '/Test/scarica.html?v=3.0',
+  '/Test/css/style.css?v=3.0',
+  '/Test/css/policy.css?v=3.0',
+  '/Test/js/crypto.js?v=3.0',
+  '/Test/js/edit.js?v=3.0',
+  '/Test/js/home.js?v=3.0',
+  '/Test/js/info.js?v=3.0',
+  '/Test/js/app.js?v=3.0',
+  '/Test/js/utils.js?v=3.0',
   '/Test/assets/apple-touch-icon.png',
   '/Test/assets/Test-logo.png',
   '/Test/assets/favicon-96x96.png',
@@ -23,7 +23,7 @@ const urlsToCache = [
   '/Test/assets/favicon.svg',
   '/Test/assets/web-app-manifest-192x192.png',
   '/Test/assets/web-app-manifest-512x512.png',
-  'manifest.json',
+  '/Test/manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-solid-900.woff2',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-brands-400.woff2'
@@ -81,11 +81,11 @@ self.addEventListener('fetch', event => {
           return fetchAndUpdateCache(event.request);
         }
         // If offline and not in cache, return fallback
-        return caches.match('index.html?v=2.9');
+        return caches.match('/Test/index.html?v=3.0');
       })
       .catch(error => {
         console.error('Fetch failed:', error);
-        return caches.match('index.html?v=2.9');
+        return caches.match('/Test/index.html?v=3.0');
       })
   );
 });
