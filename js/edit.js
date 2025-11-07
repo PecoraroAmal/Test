@@ -87,11 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
         addWalletBtn.addEventListener('click', addWallet);
     }
 
-    // Gestione drag and drop e click per upload
+    // Gestione drag and drop e click per upload (robusto contro eventi nidificati)
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
+            let dragCounter = 0;
+
             uploadZone.addEventListener('dragenter', e => {
                 e.preventDefault();
+                dragCounter++;
                 uploadZone.classList.add('drag-over');
             });
 
@@ -102,14 +105,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             uploadZone.addEventListener('dragleave', e => {
-                if (e.target === uploadZone) {
-                    uploadZone.classList.remove('drag-over');
-                }
+                dragCounter = Math.max(0, dragCounter - 1);
+                if (dragCounter === 0) uploadZone.classList.remove('drag-over');
             });
 
             uploadZone.addEventListener('drop', e => {
                 e.preventDefault();
                 e.stopPropagation();
+                dragCounter = 0;
                 uploadZone.classList.remove('drag-over');
                 const files = e.dataTransfer?.files || (e.target?.files);
                 const file = files?.[0];
@@ -120,6 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileInput = document.getElementById('fileInput');
                 if (fileInput) fileInput.click();
             });
+
+            // Evita che il browser apra file trascinati fuori dalla zona
+            window.addEventListener('dragover', e => e.preventDefault());
+            window.addEventListener('drop', e => e.preventDefault());
     }
 
     // Gestione toggle sezioni

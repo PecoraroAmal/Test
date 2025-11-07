@@ -68,51 +68,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Gestione drag and drop e click per upload file
+    // Gestione drag and drop e click per upload file (robusto contro eventi nidificati)
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
-        // Provide consistent UX: highlight on enter/over, remove on leave/drop
+        let dragCounter = 0;
+
         uploadZone.addEventListener('dragenter', e => {
             e.preventDefault();
+            dragCounter++;
             uploadZone.classList.add('drag-over');
         });
 
         uploadZone.addEventListener('dragover', e => {
-            // must preventDefault to allow drop
             e.preventDefault();
-            // hint to the browser that we will copy the file
             if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+            // keep highlighted while dragging
             uploadZone.classList.add('drag-over');
         });
 
         uploadZone.addEventListener('dragleave', e => {
-            // only remove when leaving the zone itself
-            // (prevents flicker when moving over child elements)
-            if (e.target === uploadZone) {
-                uploadZone.classList.remove('drag-over');
-            }
+            // decrement counter; only remove highlight when fully left
+            dragCounter = Math.max(0, dragCounter - 1);
+            if (dragCounter === 0) uploadZone.classList.remove('drag-over');
         });
 
         uploadZone.addEventListener('drop', e => {
             e.preventDefault();
             e.stopPropagation();
+            dragCounter = 0;
             uploadZone.classList.remove('drag-over');
 
-            // prefer dataTransfer.files, but handle cases consistently
             const files = e.dataTransfer?.files || (e.target?.files);
             const file = files?.[0];
-            if (file) {
-                // reuse existing handler which expects an event-like object
-                handleFileUpload({ target: { files: [file] } });
-            }
+            if (file) handleFileUpload({ target: { files: [file] } });
         });
 
         uploadZone.addEventListener('click', () => {
             const fileInput = document.getElementById('fileInput');
-            if (fileInput) {
-                fileInput.click();
-            }
+            if (fileInput) fileInput.click();
         });
+
+        // Prevent default on document to avoid browser navigating when dropping outside
+        window.addEventListener('dragover', e => e.preventDefault());
+        window.addEventListener('drop', e => e.preventDefault());
     }
 
     // Gestione toggle sezioni
