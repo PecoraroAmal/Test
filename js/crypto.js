@@ -9,10 +9,10 @@ let argon2Ready = false;
 
 const argon2ReadyPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = '/Test/tree/main/lib/argon2.min.js';
+    script.src = 'argon2.min.js';
     script.onload = () => {
         loadArgon2Module({
-            wasmUrl: '/Test/tree/main/lib/argon2.wasm',
+            wasmUrl: 'argon2.wasm',
             onAbort: reject
         }).then(mod => {
             argon2Module = mod;
