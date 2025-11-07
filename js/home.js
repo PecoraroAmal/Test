@@ -3,6 +3,25 @@ let loadedData = null;
 let uploadedFile = null;
 let uploadedFileName = null;
 
+// Fallback per UUID se crypto.randomUUID non disponibile
+function generateUUID() {
+    // semplice fallback RFC4122 v4-like
+    try {
+        if (window.crypto && crypto.getRandomValues) {
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            // set version bits 4 and variant bits
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            return `${hex.substr(0,8)}-${hex.substr(8,4)}-${hex.substr(12,4)}-${hex.substr(16,4)}-${hex.substr(20,12)}`;
+        }
+    } catch (e) {
+        // fallthrough
+    }
+    // fallback non-crypto
+    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
+}
 // Inizializzazione al caricamento della pagina
 document.addEventListener('DOMContentLoaded', () => {
     // Listener per input e filtri
@@ -40,25 +59,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const decryptPassword = document.getElementById('decryptPassword');
     if (decryptPassword) {
-        decryptPassword.addEventListener('keypress', e => {
-            if (e.key === 'Enter') openFile();
+        // use keydown which is more reliable for catching Enter across browsers
+        decryptPassword.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                openFile();
+            }
         });
     }
 
     // Gestione drag and drop e click per upload file
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
-        uploadZone.addEventListener('dragover', e => {
+        // Provide consistent UX: highlight on enter/over, remove on leave/drop
+        uploadZone.addEventListener('dragenter', e => {
             e.preventDefault();
             uploadZone.classList.add('drag-over');
         });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+
+        uploadZone.addEventListener('dragover', e => {
+            // must preventDefault to allow drop
+            e.preventDefault();
+            // hint to the browser that we will copy the file
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+            uploadZone.classList.add('drag-over');
+        });
+
+        uploadZone.addEventListener('dragleave', e => {
+            // only remove when leaving the zone itself
+            // (prevents flicker when moving over child elements)
+            if (e.target === uploadZone) {
+                uploadZone.classList.remove('drag-over');
+            }
+        });
+
         uploadZone.addEventListener('drop', e => {
             e.preventDefault();
+            e.stopPropagation();
             uploadZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload({ target: { files: [file] } });
+
+            // prefer dataTransfer.files, but handle cases consistently
+            const files = e.dataTransfer?.files || (e.target?.files);
+            const file = files?.[0];
+            if (file) {
+                // reuse existing handler which expects an event-like object
+                handleFileUpload({ target: { files: [file] } });
+            }
         });
+
         uploadZone.addEventListener('click', () => {
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
@@ -195,7 +243,13 @@ async function openFile() {
         // Aggiungi ID se mancanti (usa crypto.randomUUID per modernità)
         ['passwords', 'cards', 'wallets'].forEach(section => {
             loadedData[section].forEach(item => {
-                if (!item.id) item.id = crypto.randomUUID();
+                if (!item.id) {
+                    try {
+                        item.id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : generateUUID();
+                    } catch (e) {
+                        item.id = generateUUID();
+                    }
+                }
             });
         });
 

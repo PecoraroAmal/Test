@@ -4,7 +4,25 @@ let uploadedFileName = null;
 
 // Genera ID univoco (usa crypto.randomUUID per standard e sicurezza)
 function generateUniqueId() {
-    return crypto.randomUUID();
+    try {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {
+        // ignore
+    }
+    // Fallback: RFC4122 v4-like using getRandomValues if available
+    try {
+        if (window.crypto && crypto.getRandomValues) {
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            return `${hex.substr(0,8)}-${hex.substr(8,4)}-${hex.substr(12,4)}-${hex.substr(16,4)}-${hex.substr(20,12)}`;
+        }
+    } catch (e) {
+        // ignore
+    }
+    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
 }
 
 // Inizializzazione al caricamento della pagina
@@ -44,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const decryptPassword = document.getElementById('decryptPassword');
     if (decryptPassword) {
-        decryptPassword.addEventListener('keypress', e => {
+        decryptPassword.addEventListener('keydown', e => {
             if (e.key === 'Enter') openFile();
         });
     }
@@ -72,23 +90,36 @@ document.addEventListener('DOMContentLoaded', () => {
     // Gestione drag and drop e click per upload
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
-        uploadZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            uploadZone.classList.add('drag-over');
-        });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-        uploadZone.addEventListener('drop', e => {
-            e.preventDefault();
-            uploadZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload({ target: { files: [file] } });
-        });
-        uploadZone.addEventListener('click', () => {
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput) {
-                fileInput.click();
-            }
-        });
+            uploadZone.addEventListener('dragenter', e => {
+                e.preventDefault();
+                uploadZone.classList.add('drag-over');
+            });
+
+            uploadZone.addEventListener('dragover', e => {
+                e.preventDefault();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+                uploadZone.classList.add('drag-over');
+            });
+
+            uploadZone.addEventListener('dragleave', e => {
+                if (e.target === uploadZone) {
+                    uploadZone.classList.remove('drag-over');
+                }
+            });
+
+            uploadZone.addEventListener('drop', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadZone.classList.remove('drag-over');
+                const files = e.dataTransfer?.files || (e.target?.files);
+                const file = files?.[0];
+                if (file) handleFileUpload({ target: { files: [file] } });
+            });
+
+            uploadZone.addEventListener('click', () => {
+                const fileInput = document.getElementById('fileInput');
+                if (fileInput) fileInput.click();
+            });
     }
 
     // Gestione toggle sezioni
