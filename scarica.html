@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scarica - Test™</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/style.css?v=2.0">
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <link rel="icon" sizes="192x192" href="assets/android-icon.png">
+    <link rel="icon" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="manifest" href="/Test/manifest.json">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-download"></i>
+                Test™
+            </div>
+            <div class="nav-links">
+                <a href="index.html?v=2.0" class="nav-link">Home</a>
+                <a href="edit.html?v=2.0" class="nav-link">Edit</a>
+                <a href="info.html?v=2.0" class="nav-link">Info</a>
+            </div>
+        </div>
+    </nav>
+    <div class="languages">
+        <a href="download.html?v=2.0" class="nav-link-language ">ENGLISH</a>
+        <a href="scarica.html?v=2.0" class="nav-link-language active">ITALIANO</a>
+    </div>
+
+    <main class="main-content">
+        <div class="container">
+            <h1>Scarica Test™</h1>
+
+            <!-- Sezione PC/Android -->
+            <section class="preview-section">
+                <h2>Per PC o Android</h2>
+                <div class="preview-card">
+                    <h3><i class="fas fa-desktop"></i> - <i class="fa-brands fa-android"></i> Installa sul Tuo PC o Dispositivo Android</h3>
+                    <p>Installa Test™ come Progressive Web App (PWA) per una gestione sicura delle password anche offline sul tuo PC o dispositivo Android.</p>
+                    <ol class="workflow-list">
+                        <li class="workflow-item">
+                            <span class="workflow-step">1</span>
+                            <div>
+                                <h4>Apri nel Browser</h4>
+                                <p>Apri questa pagina in un browser supportato (es. Chrome, Edge, Samsung Internet) su HTTPS.</p>
+                            </div>
+                        </li>
+                        <li class="workflow-item">
+                            <span class="workflow-step">2</span>
+                            <div>
+                                <h4>Installa l'App</h4>
+                                <p>Clicca sul pulsante di installazione e successivamente premi installa</p>
+                            </div>
+                        </li>
+                        <li class="workflow-item">
+                            <span class="workflow-step">3</span>
+                            <div>
+                                <h4>Accedi alle Tue Credenziali</h4>
+                                <p>Gestisci le tue password in modo sicuro, anche offline.</p>
+                            </div>
+                        </li>
+                    </ol>
+                    <div class="btn-container">
+                        <button id="install-app" class="btn btn-primary" aria-label="Installa Test per PC o Android">
+                            <i class="fas fa-download"></i> Installa per PC o Android
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <!-- Sezione iOS -->
+            <section class="preview-section">
+                <h2>Per iOS</h2>
+                <div class="preview-card">
+                    <h3><i class="fa-brands fa-apple"></i> Installa sul Tuo Dispositivo iOS</h3>
+                    <ol class="workflow-list">
+                        <li class="workflow-item">
+                            <span class="workflow-step">1</span>
+                            <div>
+                                <h4>Premi i Tre Puntini</h4>
+                                <p>Tocca i tre puntini accanto alla barra di ricerca in Safari.</p>
+                            </div>
+                        </li>
+                        <li class="workflow-item">
+                            <span class="workflow-step">2</span>
+                            <div>
+                                <h4>Seleziona Condividi</h4>
+                                <p>Tocca <strong>Condividi</strong> dal menu.</p>
+                            </div>
+                        </li>
+                        <li class="workflow-item">
+                            <span class="workflow-step">3</span>
+                            <div>
+                                <h4>Tocca Altro</h4>
+                                <p>Seleziona <strong>Altro</strong> (tre puntini) dalle opzioni di condivisione.</p>
+                            </div>
+                        </li>
+                        <li class="workflow-item">
+                            <span class="workflow-step">4</span>
+                            <div>
+                                <h4>Aggiungi alla Schermata Home</h4>
+                                <p>Seleziona <strong>Aggiungi alla Schermata Home</strong> (quadrato con un + al centro).</p>
+                            </div>
+                        </li>
+                        <li class="workflow-item">
+                            <span class="workflow-step">5</span>
+                            <div>
+                                <h4>Abilita Web App</h4>
+                                <p>Spunta <strong>Apri come Web App</strong>.</p>
+                            </div>
+                        </li>
+                    </ol>
+                    <p><strong>Nota: Questa funzione non scarica il sito ma permette di visualizzarlo come app. Per usare offline, apri la scorciatoia, carica la pagina e poi togli la connessione.</strong></p>
+                    <div class="btn-container">
+                        <a href="https://support.apple.com/it-it/guide/iphone/iph42ab2f3a7/ios" target="_blank" class="btn btn-primary" aria-label="Scopri di più su come aggiungere alla schermata Home su iOS">
+                            <i class="fas fa-question-circle"></i> Scopri di Più
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Test™ - Privacy First</p>
+            <p>Questo sito non memorizza né trasmette alcun dato personale. Tutti i dati caricati restano esclusivamente nel browser dell’utente e vengono eliminati alla chiusura della pagina.</p>
+            <p>
+                <a href="https://www.paypal.com/donate/?hosted_button_id=5Z5N9EBJERXC6" target="_blank" class="donation-button">
+                    Supporta il Progetto
+                </a>
+            </p>
+            <p class="donation-note">
+                La donazione è <strong>completamente volontaria</strong> e <strong>non garantisce accesso a funzionalità aggiuntive</strong>. Serve esclusivamente a supportare il progetto.
+            </p>
+            <div class="social-links">
+                <p class="social-label">Seguici:</p>
+                <a href="https://www.facebook.com/profile.php?id=61582398389771" target="_blank" class="social-link">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a href="https://www.instagram.com/Testofficial/" target="_blank" class="social-link">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href="https://www.linkedin.com/company/Test%E2%84%A2/?viewAsMember=true" target="_blank" class="social-link">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+                <a href="https://x.com/TestTM" target="_blank" class="social-link">
+                    <i class="fab fa-x-twitter"></i>
+                </a>
+            </div>
+            <p>
+                <a href="/Test/cookie-policy.html?v=2.0">Cookie Policy</a> |
+                <a href="/Test/privacy-policy.html?v=2.0">Privacy Policy</a>
+            </p>
+        </div>
+        <p>Test™: 2.0</p>
+    </footer>
+    <script src="/Test/js/utils.js?v=2.0"></script>
+    <script src="/Test/js/app.js?v=2.0"></script>
+</body>
+</html>

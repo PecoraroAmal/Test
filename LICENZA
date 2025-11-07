@@ -1,0 +1,53 @@
+filename: LICENZA
+
+Io, Amal Pecoraro, detengo il copyright sul progetto Test.
+
+Copyright (C) 2025 Amal Pecoraro. Tutti i diritti riservati.
+
+REVOCA PRECEDENTE LICENZA
+Io, Amal Pecoraro, revoco con effetto immediato ogni licenza GNU Affero General Public Licence v3.0 (AGPL-3.0) precedentemente applicata a questo progetto. Qualsiasi copia distribuita prima di questa data rimane soggetta alla AGPL-3.0, ma tutte le nuove distribuzioni devono rispettare esclusivamente la presente licenza.
+
+Con la presente concedo a chiunque riceva una copia di questo software e dei file associati (il "Software") l'autorizzazione irrevocabile a usarlo, copiarlo, modificarlo, unirlo, pubblicarlo, distribuirlo, sublicenziarlo e/o venderne copie, alle seguenti condizioni:
+
+1. Codice sorgente aperto
+   Ogni distribuzione del Software, in forma originale o modificata, DEVE includere il codice sorgente completo, leggibile e non ofuscato, insieme alla presente licenza.
+
+2. Attribuzione obbligatoria
+   Ogni copia o opera derivata DEVE contenere, in modo chiaramente visibile (nel file README.md, nella root del progetto e in ogni file sorgente modificato), il seguente avviso:
+    Test - Codice originale di Amal Pecoraro
+    Copyright (C) 2025 Amal Pecoraro
+    Modificato da: [Tuo Nome o Organizzazione] - [Data]
+
+3. Divieto assoluto di utilizzo del marchio e del branding
+È VIETATO, in ogni circostanza:
+- Usare il nome "Test", "Test™" o qualsiasi variante (es. Test Pro, Super Test, ecc.)
+- Usare loghi, icone, immagini, stili grafici o elementi visivi presenti nel progetto originale
+- Creare l'impressione che il prodotto derivato sia una versione ufficiale, approvata o collegata a me
+
+Ogni opera derivata DEVE adottare un nome, un design e un'identità visiva completamente nuovi e distinti.
+
+4. Uso commerciale consentito
+È consentito l'uso commerciale del Software modificato, purché siano rispettate tutte le condizioni sopra indicate.
+
+5. Nessuna garanzia
+Il Software è fornito "così com'è", senza garanzie di alcun tipo. Io, Amal Pecoraro, non sarò responsabile per danni diretti, indiretti, incidentali o consequenziali derivanti dall'uso del Software.
+
+6. Violazione e terminazione
+La violazione di una qualsiasi delle condizioni sopra elencate comporta la revoca automatica e immediata della licenza, senza necessità di preavviso.
+
+7. Legge applicabile e foro competente
+La presente licenza è regolata dalla legge italiana (L. 633/1941 e D.Lgs. 30/2005) e dal diritto dell'Unione Europea.
+Qualsiasi controversia sarà devoluta in via esclusiva al Tribunale di Roma.
+
+---
+
+Io, Amal Pecoraro, dichiaro che questa è la licenza ufficiale del progetto Test.
+Chiunque la rispetti è autorizzato a usare e modificare il mio codice.
+Chiunque la violi sarà perseguito secondo la legge.
+
+Firmato digitalmente:
+Amal Pecoraro
+Luogo: Italia
+Data: 31 ottobre 2025
+
+--- FINE DELLA LICENZA ---
