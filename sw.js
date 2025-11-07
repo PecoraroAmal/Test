@@ -1,21 +1,21 @@
-const CACHE_NAME = 'Test-cache-v2.4';
+const CACHE_NAME = 'Test-cache-v2.5';
 const urlsToCache = [
-  'index.html?v=2.4',
-  'edit.html?v=2.4',
-  'privacy-policy.html?v=2.4',
-  'cookie-policy.html?v=2.4',
-  'info.html?v=2.4',
-  'informazioni.html?v=2.4',
-  'download.html?v=2.4',
-  'scarica.html?v=2.4',
-  'css/style.css?v=2.4',
-  'css/policy.css?v=2.4',
-  '/Test/js/crypto.js?v=2.4',
-  '/Test/js/edit.js?v=2.4',
-  '/Test/js/home.js?v=2.4',
-  '/Test/js/info.js?v=2.4',
-  '/Test/js/app.js?v=2.4',
-  '/Test/js/utils.js?v=2.4',
+  'index.html?v=2.5',
+  'edit.html?v=2.5',
+  'privacy-policy.html?v=2.5',
+  'cookie-policy.html?v=2.5',
+  'info.html?v=2.5',
+  'informazioni.html?v=2.5',
+  'download.html?v=2.5',
+  'scarica.html?v=2.5',
+  'css/style.css?v=2.5',
+  'css/policy.css?v=2.5',
+  '/Test/js/crypto.js?v=2.5',
+  '/Test/js/edit.js?v=2.5',
+  '/Test/js/home.js?v=2.5',
+  '/Test/js/info.js?v=2.5',
+  '/Test/js/app.js?v=2.5',
+  '/Test/js/utils.js?v=2.5',
   '/Test/assets/apple-touch-icon.png',
   '/Test/assets/Test-logo.png',
   '/Test/assets/favicon-96x96.png',
@@ -81,11 +81,11 @@ self.addEventListener('fetch', event => {
           return fetchAndUpdateCache(event.request);
         }
         // If offline and not in cache, return fallback
-        return caches.match('index.html?v=2.4');
+        return caches.match('index.html?v=2.5');
       })
       .catch(error => {
         console.error('Fetch failed:', error);
-        return caches.match('index.html?v=2.4');
+        return caches.match('index.html?v=2.5');
       })
   );
 });
