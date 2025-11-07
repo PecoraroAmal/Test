@@ -1,7 +1,7 @@
 filename: README.md
 # Test™ - Password Manager
 
-👉 **[Go to the website](https://pecoraroamal.github.io/Test/)**
+👉 **[Go to the website](https://pecoraroamal.github.io)**
 
 **NOTICE: LICENCE UPDATED**  
 This project is **NO LONGER** under the GNU Affero General Public Licence v3.0 (AGPL-3.0).  
