@@ -1,11 +1,11 @@
-// Global variables to manage loaded data and file
+// Variabili globali
 let loadedData = null;
 let uploadedFile = null;
 let uploadedFileName = null;
 
-// Initialization when the page loads
+// Inizializzazione al caricamento della pagina
 document.addEventListener('DOMContentLoaded', () => {
-    // Add event listeners for inputs and filters
+    // Listener per input e filtri
     const fileInput = document.getElementById('fileInput');
     if (fileInput) {
         fileInput.addEventListener('change', handleFileUpload);
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Handle drag and drop and click for file upload
+    // Gestione drag and drop e click per upload file
     const uploadZone = document.getElementById('uploadZone');
     if (uploadZone) {
         uploadZone.addEventListener('dragover', e => {
@@ -59,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.dataTransfer.files[0];
             if (file) handleFileUpload({ target: { files: [file] } });
         });
-        // Add click event to open file explorer
         uploadZone.addEventListener('click', () => {
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
@@ -68,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Handle section toggling
+    // Gestione toggle sezioni
     const togglePasswordBtn = document.getElementById('togglePasswordBtn');
     if (togglePasswordBtn) {
         togglePasswordBtn.addEventListener('click', () => toggleSection('passwordContainer', togglePasswordBtn));
@@ -83,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Handles the upload of the selected file
+// Gestione upload file
 function handleFileUpload(event) {
     const files = event.target?.files || event.dataTransfer?.files;
     const file = files?.[0];
@@ -93,7 +92,7 @@ function handleFileUpload(event) {
         return;
     }
 
-    if (file.size > 500* 1024) {
+    if (file.size > 500 * 1024) {  // Limite 0.5 MB coerente con messaggio
         showMessage('File too large (max 0.5 MB). Keep under ~3,000 passwords.', 'error');
         if (event.target) event.target.value = '';
         return;
@@ -133,13 +132,13 @@ function handleFileUpload(event) {
         }
     };
 
-    // Leggi come testo
-    reader.readAsText(file);
+    reader.readAsText(file);  // Leggi come testo
 }
 
+// Apertura e decrittazione file
 async function openFile() {
     if (!uploadedFile) {
-        showMessage('Seleziona prima un file JSON valido', 'error');
+        showMessage('Select a valid JSON file first', 'error');
         return;
     }
 
@@ -147,59 +146,56 @@ async function openFile() {
     const btn = document.getElementById('decryptBtn');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Apertura in corso...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening...';
     }
 
     let rawData = null;
-    let fileType = 'sconosciuto';
+    let fileType = 'unknown';
 
     try {
-        // STEP 1: Prova a capire se è V2 (inizia con "AA" in base64url → dopo decode è 0,0)
+        // STEP 1: Prova V2 (inizia con AA, AQ, Ag, Aw in base64url)
         try {
             const preview = uploadedFile.trim().slice(0, 10);
             const isV2 = preview.startsWith('AA') || preview.startsWith('AQ') || preview.startsWith('Ag') || preview.startsWith('Aw');
 
             if (isV2) {
                 rawData = await decryptV2(uploadedFile, password);
-                fileType = 'Nuovo (V2 - crittografia avanzata)';
-                console.log('Rilevato file V2 → usato decryptV2');
+                fileType = 'New (V2 - advanced encryption)';
             } else {
-                throw new Error('Non è V2');
+                throw new Error('Not V2');
             }
         } catch (e) {
-            // STEP 2: Non è V2 → prova vecchio formato (V1)
+            // STEP 2: Prova vecchio formato (V1)
             try {
                 rawData = await decryptOld(uploadedFile, password);
-                fileType = 'Vecchio (V1 - compatibilità)';
-                console.log('Rilevato file V1 → usato decryptOld');
+                fileType = 'Old (V1 - compatibility)';
             } catch (e2) {
-                // STEP 3: Non è criptato → prova JSON semplice
+                // STEP 3: Non criptato, prova JSON semplice
                 try {
                     rawData = JSON.parse(uploadedFile);
-                    fileType = 'Non criptato (testo semplice)';
-                    console.log('File non criptato → JSON.parse diretto');
+                    fileType = 'Unencrypted (plain text)';
                 } catch (e3) {
-                    throw new Error('Password errata, file corrotto o formato non supportato');
+                    throw new Error('Wrong password, corrupted file or unsupported format');
                 }
             }
         }
 
         // Validazione struttura
         if (!validateJSONStructure(rawData)) {
-            throw new Error('Struttura del file non valida (manca passwords/cards/wallets)');
+            throw new Error('Invalid file structure (missing passwords/cards/wallets)');
         }
 
-        // Caricamento dati
+        // Caricamento dati con fallback array vuoti
         loadedData = {
             passwords: Array.isArray(rawData.passwords) ? rawData.passwords : [],
-            cards:     Array.isArray(rawData.cards) ? rawData.cards : [],
-            wallets:   Array.isArray(rawData.wallets) ? rawData.wallets : []
+            cards: Array.isArray(rawData.cards) ? rawData.cards : [],
+            wallets: Array.isArray(rawData.wallets) ? rawData.wallets : []
         };
 
-        // Aggiungi ID univoci se mancanti
+        // Aggiungi ID se mancanti (usa crypto.randomUUID per modernità)
         ['passwords', 'cards', 'wallets'].forEach(section => {
             loadedData[section].forEach(item => {
-                if (!item.id) item.id = generateUniqueId();
+                if (!item.id) item.id = crypto.randomUUID();
             });
         });
 
@@ -207,40 +203,36 @@ async function openFile() {
         displayData(loadedData);
         populateFilters(loadedData);
 
-        // Pulizia interfaccia
+        // Pulizia UI
         document.getElementById('decryptPassword').value = '';
         uploadedFile = uploadedFileName = null;
         document.getElementById('fileInput').value = '';
         document.querySelector('.file-name')?.textContent = '';
 
-        // Messaggio finale con tipo file
-        showMessage(`File aperto con successo! (${fileType})`, 'success');
-        console.log('File aperto:', fileType);
-
+        showMessage(`File opened successfully! (${fileType})`, 'success');
     } catch (err) {
-        console.error('Errore apertura:', err);
+        console.error('Opening error:', err);
         const msg = password 
-            ? 'Password errata o file corrotto' 
-            : 'File non valido. Se è criptato, inserisci la password';
+            ? 'Wrong password or corrupted file' 
+            : 'Invalid file. If encrypted, enter the password';
         showMessage(msg, 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-unlock"></i> Apri File';
+            btn.innerHTML = '<i class="fas fa-unlock"></i> Open File';
         }
     }
 }
 
-// Validates the JSON structure
+// Validazione struttura JSON
 function validateJSONStructure(data) {
-    // Check that data is an object and each section, if present, is an array
     return data && typeof data === 'object' &&
            (data.passwords === undefined || Array.isArray(data.passwords)) &&
            (data.cards === undefined || Array.isArray(data.cards)) &&
            (data.wallets === undefined || Array.isArray(data.wallets));
 }
 
-// Sorts data alphabetically
+// Ordinamento dati alfabetico
 function sortData() {
     if (!loadedData) return;
     loadedData.passwords.sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
@@ -248,56 +240,43 @@ function sortData() {
     loadedData.wallets.sort((a, b) => a.wallet.localeCompare(b.wallet, 'en', { sensitivity: 'base' }));
 }
 
-// Function to handle section toggling
-function toggleSection(containerId, button) {
-    const container = document.getElementById(containerId);
-    if (container) {
-        const isHidden = container.classList.contains('hidden');
-        container.classList.toggle('hidden');
-        button.innerHTML = isHidden ? 
-            `<i class="fas fa-eye-slash"></i> Hide ${containerId.replace('Container', '')}` :
-            `<i class="fas fa-eye"></i> Show ${containerId.replace('Container', '')}`;
-    }
-}
-
-// Displays all data in their respective sections
+// Visualizzazione dati
 function displayData(data) {
-    displayPasswords(data.passwords || []);
-    displayCards(data.cards || []);
-    displayWallets(data.wallets || []);
+    displayPasswords(data.passwords);
+    displayCards(data.cards ?? []);  // Fallback array vuoto
+    displayWallets(data.wallets);
 }
 
-// Displays passwords in the dedicated section
+// Visualizzazione password
 function displayPasswords(passwords) {
     const container = document.getElementById('passwordContainer');
     if (!container) return;
 
     container.innerHTML = '';
-
-    if (!passwords.length) {
+    if (passwords.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-lock"></i>
                 <p>No passwords saved</p>
-            </div>`;
+            </div>
+        `;
         return;
     }
 
     passwords.forEach(pwd => {
         const card = document.createElement('div');
-        card.className = 'preview-card-item';
+        card.className = 'data-card';
         card.innerHTML = `
-            <h3 class="scrollable-text">${escapeHtml(pwd.platform)}</h3>
+            <div class="card-header">
+                <h3>${escapeHtml(pwd.platform)}</h3>
+            </div>
             <div class="field-container">
                 <label class="field-label">Username</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(pwd.username)}">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(pwd.username)}" data-field="username">${escapeHtml(pwd.username)}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Username')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.username)}', 'Username')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -305,7 +284,7 @@ function displayPasswords(passwords) {
             <div class="field-container">
                 <label class="field-label">Password</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(pwd.password)}">••••••••••••</span>
+                    <span class="hidden-content" data-value="${escapeHtml(pwd.password)}" data-field="password">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -317,9 +296,20 @@ function displayPasswords(passwords) {
                 </div>
             </div>
             <div class="field-container">
+                <label class="field-label">URL</label>
+                <div class="content-wrapper">
+                    <span class="scrollable-text" data-value="${escapeHtml(pwd.url || '-')}" data-field="url">${escapeHtml(pwd.url || '-')}</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(pwd.url || '-')}', 'URL')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(pwd.notes || '-')}" data-notes="true">${pwd.notes ? '••••••••••••' : '-'}</span>
+                    <span class="hidden-content" data-value="${escapeHtml(pwd.notes || '-')}" data-field="notes">${pwd.notes ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -328,12 +318,6 @@ function displayPasswords(passwords) {
                     <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Notes')">
                         <i class="fas fa-copy"></i>
                     </button>
-                </div>
-            </div>
-            <div class="field-container">
-                <label class="field-label">URL</label>
-                <div class="content-wrapper">
-                    <a href="${escapeHtml(pwd.url || '#')}" class="url-field scrollable-text" data-value="${escapeHtml(pwd.url || '-')}" data-field="url" target="_blank" rel="noopener noreferrer">${escapeHtml(pwd.url || '-')}</a>
                 </div>
             </div>
             <div class="field-container">
@@ -347,31 +331,33 @@ function displayPasswords(passwords) {
     });
 }
 
-// Displays cards in the dedicated section
+// Visualizzazione carte (simile, con campi specifici)
 function displayCards(cards) {
     const container = document.getElementById('cardContainer');
     if (!container) return;
 
     container.innerHTML = '';
-
-    if (!cards.length) {
+    if (cards.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-credit-card"></i>
                 <p>No cards saved</p>
-            </div>`;
+            </div>
+        `;
         return;
     }
 
     cards.forEach(card => {
-        const cardElement = document.createElement('div');
-        cardElement.className = 'preview-card-item';
-        cardElement.innerHTML = `
-            <h3 class="scrollable-text">${escapeHtml(card.issuer)}</h3>
+        const cardElem = document.createElement('div');
+        cardElem.className = 'data-card';
+        cardElem.innerHTML = `
+            <div class="card-header">
+                <h3>${escapeHtml(card.issuer)}</h3>
+            </div>
             <div class="field-container">
                 <label class="field-label">PAN</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(card.pan)}">••••••••••••</span>
+                    <span class="hidden-content" data-value="${escapeHtml(card.pan)}" data-field="pan">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -385,27 +371,24 @@ function displayCards(cards) {
             <div class="field-container">
                 <label class="field-label">Expiry Date</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(card.expiryDate)}">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(card.expiryDate)}" data-field="expiryDate">${escapeHtml(card.expiryDate)}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Expiry Date')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(card.expiryDate)}', 'Expiry Date')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
             </div>
             <div class="field-container">
-                <label class="field-label">CVV/CVC2</label>
+                <label class="field-label">CVV</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(card.cvv)}">••••••••••••</span>
+                    <span class="hidden-content" data-value="${escapeHtml(card.cvv)}" data-field="cvv">••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'CVV/CVC2')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'CVV')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -413,7 +396,7 @@ function displayCards(cards) {
             <div class="field-container">
                 <label class="field-label">PIN</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(card.pin)}">••••••••••••</span>
+                    <span class="hidden-content" data-value="${escapeHtml(card.pin)}" data-field="pin">••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -427,7 +410,7 @@ function displayCards(cards) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(card.notes || '-')}" data-notes="true">${card.notes ? '••••••••••••' : '-'}</span>
+                    <span class="hidden-content" data-value="${escapeHtml(card.notes || '-')}" data-field="notes">${card.notes ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -445,41 +428,40 @@ function displayCards(cards) {
                 </div>
             </div>
         `;
-        container.appendChild(cardElement);
+        container.appendChild(cardElem);
     });
 }
 
-// Displays wallets in the dedicated section
+// Visualizzazione wallet (simile)
 function displayWallets(wallets) {
     const container = document.getElementById('walletContainer');
     if (!container) return;
 
     container.innerHTML = '';
-
-    if (!wallets.length) {
+    if (wallets.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-wallet"></i>
                 <p>No wallets saved</p>
-            </div>`;
+            </div>
+        `;
         return;
     }
 
     wallets.forEach(wallet => {
         const card = document.createElement('div');
-        card.className = 'preview-card-item';
+        card.className = 'data-card';
         card.innerHTML = `
-            <h3 class="scrollable-text">${escapeHtml(wallet.wallet)}</h3>
+            <div class="card-header">
+                <h3>${escapeHtml(wallet.wallet)}</h3>
+            </div>
             <div class="field-container">
                 <label class="field-label">Username</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(wallet.username)}">••••••••••••</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(wallet.username || '-')}" data-field="username">${escapeHtml(wallet.username || '-')}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Username')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.username || '-')}', 'Username')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -487,7 +469,7 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Password</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(wallet.password)}">••••••••••••</span>
+                    <span class="hidden-content" data-value="${escapeHtml(wallet.password)}" data-field="password">••••••••••••</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -501,7 +483,7 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Key</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(wallet.key || '-')}" data-key="true">${wallet.key ? '••••••••••••' : '-'}</span>
+                    <span class="hidden-content" data-value="${escapeHtml(wallet.key || '-')}" data-field="key">${wallet.key ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -515,13 +497,10 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Address</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(wallet.address || '-')}" data-address="true">${wallet.address ? '••••••••••••' : '-'}</span>
+                    <span class="scrollable-text" data-value="${escapeHtml(wallet.address || '-')}" data-field="address">${escapeHtml(wallet.address || '-')}</span>
                 </div>
                 <div class="button-group">
-                    <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard(this.closest('.field-container').querySelector('.hidden-content').dataset.value, 'Address')">
+                    <button class="btn btn-icon copy-btn" onclick="copyToClipboard('${escapeHtml(wallet.address || '-')}', 'Address')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
@@ -529,7 +508,7 @@ function displayWallets(wallets) {
             <div class="field-container">
                 <label class="field-label">Notes</label>
                 <div class="content-wrapper">
-                    <span class="hidden-content scrollable-text" data-value="${escapeHtml(wallet.notes || '-')}" data-notes="true">${wallet.notes ? '••••••••••••' : '-'}</span>
+                    <span class="hidden-content" data-value="${escapeHtml(wallet.notes || '-')}" data-field="notes">${wallet.notes ? '••••••••••••' : '-'}</span>
                 </div>
                 <div class="button-group">
                     <button class="btn btn-icon toggle-password" onclick="toggleVisibility(this)">
@@ -551,30 +530,38 @@ function displayWallets(wallets) {
     });
 }
 
-// Handles visibility of sensitive content
+// Toggle visibilità contenuti sensibili
 function toggleVisibility(button) {
     const parent = button.closest('.field-container');
     const span = parent?.querySelector('.hidden-content');
     if (!span) return;
 
     const value = span.dataset.value;
-    const isHidden = span.textContent === '••••••••••••' || span.textContent === '-';
+    const isHidden = span.textContent === '••••••••••••' || span.textContent === '••••' || span.textContent === '-';
 
     if (isHidden && value !== '-') {
         span.textContent = value;
         button.innerHTML = '<i class="fas fa-eye-slash"></i>';
     } else {
-        span.textContent = value && value !== '-' ? '••••••••••••' : '-';
+        span.textContent = value && value !== '-' ? (span.textContent.length > 4 ? '••••••••••••' : '••••') : '-';
         button.innerHTML = '<i class="fas fa-eye"></i>';
     }
 }
 
-// Copies text to clipboard
+// Copia in clipboard con fallback
 function copyToClipboard(text, type) {
     if (text === '-') return;
-    navigator.clipboard.writeText(text)
-        .then(() => showMessage(`${type} copied to clipboard!`, 'success'))
-        .catch(() => showMessage('Error during copying', 'error'));
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text)
+            .then(() => showMessage(`${type} copied to clipboard!`, 'success'))
+            .catch(() => showMessage('Error during copying', 'error'));
+    } else {
+        fallbackCopy(text, 
+            () => showMessage(`${type} copied to clipboard!`, 'success'),
+            () => showMessage('Error during copying', 'error')
+        );
+    }
 }
 
 function fallbackCopy(text, onSuccess, onError) {
@@ -587,8 +574,7 @@ function fallbackCopy(text, onSuccess, onError) {
     textarea.select();
 
     try {
-        const result = document.execCommand('copy');
-        if (result) {
+        if (document.execCommand('copy')) {
             onSuccess();
         } else {
             onError();
@@ -600,7 +586,7 @@ function fallbackCopy(text, onSuccess, onError) {
     document.body.removeChild(textarea);
 }
 
-// Filters data based on search inputs and filters
+// Filtraggio dati basato su input ricerca e filtri
 function filterData() {
     if (!loadedData) return;
 
@@ -620,8 +606,8 @@ function filterData() {
     const walletSearch = walletSearchInput.value.toLowerCase();
     const type = typeFilter.value.toLowerCase();
 
-    // Filter passwords
-    const filteredPasswords = (loadedData.passwords || []).filter(pwd => {
+    // Filtro password
+    const filteredPasswords = loadedData.passwords.filter(pwd => {
         const searchMatch = !passwordSearch || 
             pwd.platform.toLowerCase().includes(passwordSearch) ||
             pwd.username.toLowerCase().includes(passwordSearch) ||
@@ -636,8 +622,8 @@ function filterData() {
         return searchMatch && categoryMatch;
     }).sort((a, b) => a.platform.localeCompare(b.platform, 'en', { sensitivity: 'base' }));
 
-    // Filter cards
-    const filteredCards = (loadedData.cards || []).filter(card => {
+    // Filtro carte
+    const filteredCards = (loadedData.cards ?? []).filter(card => {
         const searchMatch = !cardSearch || 
             card.issuer.toLowerCase().includes(cardSearch) ||
             card.pan.toLowerCase().includes(cardSearch) ||
@@ -653,8 +639,8 @@ function filterData() {
         return searchMatch && circuitMatch;
     }).sort((a, b) => a.issuer.localeCompare(b.issuer, 'en', { sensitivity: 'base' }));
 
-    // Filter wallets
-    const filteredWallets = (loadedData.wallets || []).filter(wallet => {
+    // Filtro wallet
+    const filteredWallets = loadedData.wallets.filter(wallet => {
         const searchMatch = !walletSearch || 
             wallet.wallet.toLowerCase().includes(walletSearch) ||
             (wallet.username && wallet.username.toLowerCase().includes(walletSearch)) ||
@@ -675,20 +661,19 @@ function filterData() {
     displayWallets(filteredWallets);
 }
 
-// Populates filters for categories, networks, and types
+// Popolamento filtri
 function populateFilters(data) {
     populateCategoryFilter(data);
     populateCircuitFilter(data);
     populateTypeFilter(data);
 }
 
-// Populates the category filter for passwords
 function populateCategoryFilter(data) {
     const select = document.getElementById('categoryFilter');
     if (!select) return;
 
     const categories = new Set();
-    (data.passwords || []).forEach(pwd => {
+    data.passwords.forEach(pwd => {
         if (pwd.category) categories.add(pwd.category);
     });
 
@@ -701,13 +686,12 @@ function populateCategoryFilter(data) {
     });
 }
 
-// Populates the network filter for cards
 function populateCircuitFilter(data) {
     const select = document.getElementById('circuitFilter');
     if (!select) return;
 
     const networks = new Set();
-    (data.cards || []).forEach(card => {
+    (data.cards ?? []).forEach(card => {
         if (card.network) networks.add(card.network);
     });
 
@@ -720,13 +704,12 @@ function populateCircuitFilter(data) {
     });
 }
 
-// Populates the type filter for wallets
 function populateTypeFilter(data) {
     const select = document.getElementById('typeFilter');
     if (!select) return;
 
     const types = new Set();
-    (data.wallets || []).forEach(wallet => {
+    data.wallets.forEach(wallet => {
         if (wallet.type) types.add(wallet.type);
     });
 
@@ -739,7 +722,7 @@ function populateTypeFilter(data) {
     });
 }
 
-// Shows a toast message for user feedback
+// Mostra messaggio toast
 function showMessage(text, type) {
     const oldMessage = document.querySelector('.toast-message');
     if (oldMessage) oldMessage.remove();
@@ -769,10 +752,37 @@ function showMessage(text, type) {
     }, 3000);
 }
 
-// Escapes text to prevent XSS
+// Escape HTML per prevenire XSS
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Toggle sezione (nascondi/mostra tutto)
+function toggleSection(containerId, button) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const isHidden = button.innerHTML.includes('eye-slash');
+    const spans = container.querySelectorAll('.hidden-content');
+
+    spans.forEach(span => {
+        const value = span.dataset.value;
+        if (isHidden) {
+            span.textContent = value && value !== '-' ? (span.textContent.length > 4 ? '••••••••••••' : '••••') : '-';
+        } else {
+            span.textContent = value;
+        }
+    });
+
+    const icons = container.querySelectorAll('.toggle-password i');
+    icons.forEach(icon => {
+        icon.className = isHidden ? 'fas fa-eye' : 'fas fa-eye-slash';
+    });
+
+    button.innerHTML = isHidden 
+        ? '<i class="fas fa-eye-slash"></i> Hide All' 
+        : '<i class="fas fa-eye"></i> Show All';
 }
