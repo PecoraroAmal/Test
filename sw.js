@@ -1,5 +1,5 @@
-const CACHE_NAME = 'Test-v4.3.1-offline';
-const VERSION = '4.3.1';
+const CACHE_NAME = 'Test-v4.3.2-offline';
+const VERSION = '4.3.2';
 
 // Tutti i file LOCALI (zero dipendenze esterne tranne Font Awesome – ma cachiamo anche i font!)
 const urlsToCache = [
