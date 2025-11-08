@@ -199,9 +199,9 @@
     </footer>
 
     <script src="/Test/js/argon2.min.js?v=4.2"></script>
-    <script src="/Test/js/crypto.js?v=4.2"></script>
+    <script src="/Test/js/crypto.js?v=4.2" defer></script>
     <script src="/Test/js/edit.js?v=4.2"></script>
-    <script>
+    <script defer>
     // Aspetta che Argon2 sia pronto (opzionale ma consigliato)
     whenCryptoReady().then(() => {
         console.log("Crittografia pronta (Argon2id carica)");
