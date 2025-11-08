@@ -4,7 +4,7 @@ filename: README.md
 👉 **[Go to the website](https://pecoraroamal.github.io/Test/)**
 
 **NOTICE: LICENCE UPDATED**  
-This project is **NO LONGER** under the GNU Affero General Public Licence v4.2 (AGPL-4.2).  
+This project is **NO LONGER** under the GNU Affero General Public Licence v4.3.1 (AGPL-4.3.1).  
 It is now under the **custom licence of Amal Pecoraro**.  
 **IT IS FORBIDDEN** to use the name "Test™", logos, images, or graphical elements in derivative products.  
 See the files `LICENCE` (English) and `LICENZA` (Italian) for full terms.
