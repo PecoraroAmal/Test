@@ -17,7 +17,7 @@ const IV_LENGTH = 12;
 let argon2Instance = null;
 let argon2LoadPromise = null;
 
-// Carica Argon2 da CDN
+// Carica Argon2 con fallback se WASM non funziona
 async function loadArgon2() {
     // Se già caricato, ritorna l'istanza
     if (argon2Instance) return argon2Instance;
@@ -27,13 +27,24 @@ async function loadArgon2() {
     
     argon2LoadPromise = (async () => {
         try {
-            // Carica lo script da unpkg
+            // Carica lo script locale argon2.js
             if (typeof argon2 === 'undefined') {
+                // Determina il percorso corretto
+                const currentScript = document.currentScript || document.querySelector('script[src*="crypto.js"]');
+                let scriptPath = './js/argon2-bundled.min.js'; // percorso di default
+                
+                if (currentScript && currentScript.src) {
+                    const scriptUrl = new URL(currentScript.src);
+                    const pathParts = scriptUrl.pathname.split('/');
+                    pathParts.pop(); // rimuove 'crypto.js'
+                    scriptPath = pathParts.join('/') + '/argon2-bundled.min.js';
+                }
+                
                 await new Promise((resolve, reject) => {
                     const script = document.createElement('script');
-                    script.src = 'https://unpkg.com/argon2-browser@1.18.0/dist/argon2-bundled.min.js';
+                    script.src = scriptPath;
                     script.onload = resolve;
-                    script.onerror = () => reject(new Error('Failed to load Argon2 from CDN'));
+                    script.onerror = () => reject(new Error(`Failed to load Argon2 from ${scriptPath}`));
                     document.head.appendChild(script);
                 });
             }
@@ -47,8 +58,9 @@ async function loadArgon2() {
             return argon2Instance;
         } catch (e) {
             console.error('Error loading Argon2:', e);
-            argon2LoadPromise = null; // Reset per permettere retry
-            throw new Error('Failed to initialize Argon2: ' + e.message);
+            console.warn('Argon2 not available, using PBKDF2 fallback for new encryptions');
+            argon2LoadPromise = null;
+            throw e;
         }
     })();
     
@@ -57,9 +69,9 @@ async function loadArgon2() {
 
 // Deriva chiave usando Argon2id
 async function deriveKeyArgon2(password, salt) {
-    const argon2Module = await loadArgon2();
-    
     try {
+        const argon2Module = await loadArgon2();
+        
         // Converti password in Uint8Array se necessario
         const passwordBytes = typeof password === 'string' 
             ? new TextEncoder().encode(password) 
@@ -90,7 +102,7 @@ async function deriveKeyArgon2(password, salt) {
     }
 }
 
-// Deriva chiave usando PBKDF2 (formato v2)
+// Deriva chiave usando PBKDF2 con parametri forti (formato v2)
 async function deriveKeyPBKDF2v2(password, salt) {
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
@@ -120,11 +132,25 @@ async function deriveKeyPBKDF2v1(password, salt) {
     );
 }
 
-// Cripta i dati usando Argon2 (nuovo formato v3)
+// Cripta i dati - prova Argon2, altrimenti usa PBKDF2 v2
 async function encryptData(data, password) {
     const salt = crypto.getRandomValues(new Uint8Array(ARGON2_SALT_LENGTH));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-    const key = await deriveKeyArgon2(password, salt);
+    
+    let key;
+    let formatVersion;
+    
+    try {
+        // Prova a usare Argon2
+        key = await deriveKeyArgon2(password, salt);
+        formatVersion = FORMAT_VERSION;
+    } catch (e) {
+        // Fallback a PBKDF2 v2 se Argon2 non è disponibile
+        console.warn('Using PBKDF2 fallback for encryption');
+        key = await deriveKeyPBKDF2v2(password, salt);
+        formatVersion = PBKDF2_V2_FORMAT;
+    }
+    
     const encoded = new TextEncoder().encode(JSON.stringify(data));
     const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
         { name: "AES-GCM", iv }, key, encoded
@@ -132,7 +158,7 @@ async function encryptData(data, password) {
     
     // Formato: [version(1)] [salt(32)] [iv(12)] [ciphertext]
     const result = new Uint8Array(1 + ARGON2_SALT_LENGTH + IV_LENGTH + ciphertext.byteLength);
-    result.set([FORMAT_VERSION], 0);
+    result.set([formatVersion], 0);
     result.set(salt, 1);
     result.set(iv, 1 + ARGON2_SALT_LENGTH);
     result.set(ciphertext, 1 + ARGON2_SALT_LENGTH + IV_LENGTH);
