@@ -5,8 +5,8 @@ const PBKDF2_V1_FORMAT = 1;
 // Parametri Argon2
 const ARGON2_SALT_LENGTH = 32;
 const ARGON2_TIME_COST = 3;        // numero di iterazioni
-const ARGON2_MEMORY_COST = 65536;  // 64 MB
-const ARGON2_PARALLELISM = 4;      // numero di thread
+const ARGON2_MEMORY_COST = 65536;  // 64 MB (in KB)
+const ARGON2_PARALLELISM = 1;      // per browser è meglio 1
 const ARGON2_HASH_LENGTH = 32;     // lunghezza output in bytes
 
 // Parametri legacy
@@ -14,74 +14,80 @@ const ITERATIONS_V2 = 800000;
 const SALT_LENGTH_V2 = 32;
 const IV_LENGTH = 12;
 
-let argon2Module = null;
+let argon2Instance = null;
+let argon2LoadPromise = null;
 
-// Carica il modulo Argon2
+// Carica Argon2 da CDN
 async function loadArgon2() {
-    if (argon2Module) return argon2Module;
+    // Se già caricato, ritorna l'istanza
+    if (argon2Instance) return argon2Instance;
     
-    try {
-        // Determina il percorso corretto per argon2.js
-        const currentScript = document.currentScript || document.querySelector('script[src*="crypto.js"]');
-        let scriptPath = './js/argon2.js'; // percorso di default
-        
-        if (currentScript && currentScript.src) {
-            // Estrae il percorso della cartella corrente
-            const scriptUrl = new URL(currentScript.src);
-            const pathParts = scriptUrl.pathname.split('/');
-            pathParts.pop(); // rimuove 'crypto.js'
-            scriptPath = pathParts.join('/') + '/argon2.js';
+    // Se già in caricamento, aspetta il completamento
+    if (argon2LoadPromise) return argon2LoadPromise;
+    
+    argon2LoadPromise = (async () => {
+        try {
+            // Carica lo script da unpkg
+            if (typeof argon2 === 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/argon2-browser@1.18.0/dist/argon2-bundled.min.js';
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Failed to load Argon2 from CDN'));
+                    document.head.appendChild(script);
+                });
+            }
+            
+            // Verifica che argon2 sia disponibile
+            if (typeof argon2 === 'undefined') {
+                throw new Error('Argon2 module not loaded');
+            }
+            
+            argon2Instance = argon2;
+            return argon2Instance;
+        } catch (e) {
+            console.error('Error loading Argon2:', e);
+            argon2LoadPromise = null; // Reset per permettere retry
+            throw new Error('Failed to initialize Argon2: ' + e.message);
         }
-        
-        // Importa il modulo argon2.js
-        const script = document.createElement('script');
-        script.src = scriptPath;
-        
-        await new Promise((resolve, reject) => {
-            script.onload = resolve;
-            script.onerror = () => reject(new Error(`Failed to load argon2.js from ${scriptPath}`));
-            document.head.appendChild(script);
-        });
-        
-        // Inizializza il modulo WASM
-        if (typeof loadArgon2WasmModule !== 'undefined') {
-            argon2Module = await loadArgon2WasmModule();
-        } else {
-            throw new Error('Argon2 module not found');
-        }
-        
-        return argon2Module;
-    } catch (e) {
-        console.error('Error loading Argon2:', e);
-        throw new Error('Failed to initialize Argon2');
-    }
+    })();
+    
+    return argon2LoadPromise;
 }
 
 // Deriva chiave usando Argon2id
 async function deriveKeyArgon2(password, salt) {
-    const module = await loadArgon2();
-    const enc = new TextEncoder();
-    const passwordBytes = enc.encode(password);
+    const argon2Module = await loadArgon2();
     
-    // Usa Argon2id per derivare la chiave
-    const hash = module.argon2id({
-        pass: passwordBytes,
-        salt: salt,
-        time: ARGON2_TIME_COST,
-        mem: ARGON2_MEMORY_COST,
-        parallelism: ARGON2_PARALLELISM,
-        hashLen: ARGON2_HASH_LENGTH,
-        type: module.ArgonType.Argon2id
-    });
-    
-    // Importa l'hash come chiave AES-GCM
-    return crypto.subtle.importKey(
-        "raw",
-        hash,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt", "decrypt"]
-    );
+    try {
+        // Converti password in Uint8Array se necessario
+        const passwordBytes = typeof password === 'string' 
+            ? new TextEncoder().encode(password) 
+            : password;
+        
+        // Usa Argon2id per derivare la chiave
+        const result = await argon2Module.hash({
+            pass: passwordBytes,
+            salt: salt,
+            time: ARGON2_TIME_COST,
+            mem: ARGON2_MEMORY_COST,
+            parallelism: ARGON2_PARALLELISM,
+            hashLen: ARGON2_HASH_LENGTH,
+            type: argon2Module.ArgonType.Argon2id
+        });
+        
+        // Importa l'hash come chiave AES-GCM
+        return crypto.subtle.importKey(
+            "raw",
+            result.hash,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["encrypt", "decrypt"]
+        );
+    } catch (e) {
+        console.error('Argon2 derivation error:', e);
+        throw new Error('Failed to derive key with Argon2');
+    }
 }
 
 // Deriva chiave usando PBKDF2 (formato v2)
