@@ -7,7 +7,7 @@ const b64uDecode=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');const p=s.length%4;
 
 const path=()=>{
     if(typeof import.meta!=='undefined'&&import.meta.url)return new URL('.',import.meta.url).pathname;
-    const s=document.querySelectorAll('script[src]');for(let e of s)if(e.src.includes('crypto.js'))return new URL('.',e.src).pathname;return'/js/';
+    const s=document.querySelectorAll('script[src]');for(let e of s)if(e.src.includes('crypto.js'))return new URL('.',e.src).pathname;return'/Test/js/';
 };
 
 const load=()=>new Promise((ok,err)=>{

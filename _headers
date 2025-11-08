@@ -1,5 +1,5 @@
 # Fix WebAssembly MIME type
-/js/argon2.wasm
+/Test/js/argon2.wasm
   Content-Type: application/wasm
 
 # Fix Font Awesome (se usi CDN)

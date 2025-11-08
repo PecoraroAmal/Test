@@ -1,5 +1,5 @@
-const CACHE_NAME = 'Test-v4.4.3-offline';
-const VERSION = '4.4.3';
+const CACHE_NAME = 'Test-v4.4.4-offline';
+const VERSION = '4.4.4';
 
 // Tutti i file LOCALI (zero dipendenze esterne tranne Font Awesome – ma cachiamo anche i font!)
 const urlsToCache = [
@@ -19,12 +19,12 @@ const urlsToCache = [
   '/Test/css/policy.css',
 
   // JS (con Argon2id locale!)
-  '/js/crypto.js',
-  '/js/app.js',
-  '/js/edit.js',
-  '/js/home.js',
-  '/js/info.js',
-  '/js/utils.js',
+  '/Test/js/crypto.js',
+  '/Test/js/app.js',
+  '/Test/js/edit.js',
+  '/Test/js/home.js',
+  '/Test/js/info.js',
+  '/Test/js/utils.js',
 
   // Lib Argon2id (100% offline)
   '/Test/lib/argon2.min.js',
