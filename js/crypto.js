@@ -37,27 +37,43 @@ const base64UrlDecode = (str) => {
 // Caricamento sicuro di argon2.wasm (stessa cartella)
 const loadArgon2 = () => {
     return new Promise((resolve, reject) => {
+        // RISOLUZIONE AUTOMATICA DEL PERCORSO (GitHub Pages safe)
+        const currentScript = document.currentScript;
+        const scriptDir = currentScript 
+            ? currentScript.src.split('/').slice(0, -1).join('/') + '/'
+            : new URL(import.meta.url || document.currentScript.src).pathname;
+        const basePath = scriptDir.substring(0, scriptDir.lastIndexOf('/') + 1);
+
         const script = document.createElement('script');
-        script.src = 'argon2.min.js';
+        script.src = basePath + 'argon2.min.js';
+        script.type = 'text/javascript';
+        script.async = true;
+
         script.onload = () => {
             if (typeof loadArgon2Module !== 'function') {
-                reject(new Error('argon2.min.js non ha caricato correttamente loadArgon2Module'));
+                reject(new Error('argon2.min.js caricato ma loadArgon2Module non trovato'));
                 return;
             }
             loadArgon2Module({
-                wasmUrl: 'argon2.wasm',
+                wasmUrl: basePath + 'argon2.wasm',
                 onAbort: reject
             }).then(mod => {
                 argon2 = mod;
                 ARGON2.type = mod.ArgonType.Argon2id;
                 argon2Ready = true;
+                console.log('Argon2id pronto (v3)');
                 resolve(mod);
             }).catch(err => {
-                console.error('Errore caricamento Argon2 WASM:', err);
+                console.error('Errore WASM:', err);
                 reject(err);
             });
         };
-        script.onerror = () => reject(new Error('Impossibile caricare argon2.min.js'));
+
+        script.onerror = (e) => {
+            console.error('Impossibile caricare argon2.min.js da:', script.src);
+            reject(new Error(`Impossibile caricare argon2.min.js\nVerifica che i file siano in:\n${basePath}\nFile richiesti:\n- argon2.min.js\n- argon2.wasm`));
+        };
+
         document.head.appendChild(script);
     });
 };
