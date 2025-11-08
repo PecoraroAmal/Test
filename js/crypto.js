@@ -21,13 +21,25 @@ async function loadArgon2() {
     if (argon2Module) return argon2Module;
     
     try {
-        // Importa il modulo argon2.js dalla stessa cartella
+        // Determina il percorso corretto per argon2.js
+        const currentScript = document.currentScript || document.querySelector('script[src*="crypto.js"]');
+        let scriptPath = './js/argon2.js'; // percorso di default
+        
+        if (currentScript && currentScript.src) {
+            // Estrae il percorso della cartella corrente
+            const scriptUrl = new URL(currentScript.src);
+            const pathParts = scriptUrl.pathname.split('/');
+            pathParts.pop(); // rimuove 'crypto.js'
+            scriptPath = pathParts.join('/') + '/argon2.js';
+        }
+        
+        // Importa il modulo argon2.js
         const script = document.createElement('script');
-        script.src = './argon2.js';
+        script.src = scriptPath;
         
         await new Promise((resolve, reject) => {
             script.onload = resolve;
-            script.onerror = () => reject(new Error('Failed to load argon2.js'));
+            script.onerror = () => reject(new Error(`Failed to load argon2.js from ${scriptPath}`));
             document.head.appendChild(script);
         });
         
