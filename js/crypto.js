@@ -1,61 +1,85 @@
-const FORMAT_VERSION = 3;
-const OLD_FORMAT_VERSION_NEW = 2;
-const OLD_FORMAT_VERSION_OLD = 1;
-const ITERATIONS_NEW = 800000;
-const SALT_LENGTH = 32;
+const FORMAT_VERSION = 3; // Nuovo formato con Argon2
+const PBKDF2_V2_FORMAT = 2;
+const PBKDF2_V1_FORMAT = 1;
+
+// Parametri Argon2
+const ARGON2_SALT_LENGTH = 32;
+const ARGON2_TIME_COST = 3;        // numero di iterazioni
+const ARGON2_MEMORY_COST = 65536;  // 64 MB
+const ARGON2_PARALLELISM = 4;      // numero di thread
+const ARGON2_HASH_LENGTH = 32;     // lunghezza output in bytes
+
+// Parametri legacy
+const ITERATIONS_V2 = 800000;
+const SALT_LENGTH_V2 = 32;
 const IV_LENGTH = 12;
 
 let argon2Module = null;
-let argon2Ready = false;
 
-const getScriptPath = () => {
-    if (typeof import.meta !== 'undefined' && import.meta.url) return new URL('.', import.meta.url).pathname;
-    const scripts = document.querySelectorAll('script[src]');
-    for (let s of scripts) if (s.src.includes('crypto.js')) return new URL('.', s.src).pathname;
-    return '/js/';
-};
-
-const loadArgon2 = () => new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = getScriptPath() + 'argon2.js';
-    script.async = true;
-    script.onload = () => {
-        if (typeof loadArgon2Module !== 'function') return reject(new Error('loadArgon2Module missing'));
-        loadArgon2Module({wasmUrl: getScriptPath() + 'argon2.wasm'}).then(mod => {
-            argon2Module = mod;
-            argon2Ready = true;
-            resolve(mod);
-        }).catch(reject);
-    };
-    script.onerror = () => reject(new Error('Failed to load argon2.js'));
-    document.head.appendChild(script);
-});
-
-const argon2Promise = loadArgon2();
-
-async function deriveKeyArgon2(password, salt) {
-    if (!argon2Ready) await argon2Promise;
-    const enc = new TextEncoder();
-    const result = await argon2Module.hash({
-        pass: enc.encode(password),
-        salt: salt,
-        time: 3,
-        mem: 65536,
-        parallelism: 4,
-        hashLen: 32,
-        type: argon2Module.ArgonType.Argon2id
-    });
-    const hash = result.hash instanceof ArrayBuffer ? new Uint8Array(result.hash) : result.hash;
-    return crypto.subtle.importKey('raw', hash, 'AES-GCM', false, ['encrypt', 'decrypt']);
+// Carica il modulo Argon2
+async function loadArgon2() {
+    if (argon2Module) return argon2Module;
+    
+    try {
+        // Importa il modulo argon2.js dalla stessa cartella
+        const script = document.createElement('script');
+        script.src = './argon2.js';
+        
+        await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Failed to load argon2.js'));
+            document.head.appendChild(script);
+        });
+        
+        // Inizializza il modulo WASM
+        if (typeof loadArgon2WasmModule !== 'undefined') {
+            argon2Module = await loadArgon2WasmModule();
+        } else {
+            throw new Error('Argon2 module not found');
+        }
+        
+        return argon2Module;
+    } catch (e) {
+        console.error('Error loading Argon2:', e);
+        throw new Error('Failed to initialize Argon2');
+    }
 }
 
-async function deriveKeyNew(password, salt) {
+// Deriva chiave usando Argon2id
+async function deriveKeyArgon2(password, salt) {
+    const module = await loadArgon2();
+    const enc = new TextEncoder();
+    const passwordBytes = enc.encode(password);
+    
+    // Usa Argon2id per derivare la chiave
+    const hash = module.argon2id({
+        pass: passwordBytes,
+        salt: salt,
+        time: ARGON2_TIME_COST,
+        mem: ARGON2_MEMORY_COST,
+        parallelism: ARGON2_PARALLELISM,
+        hashLen: ARGON2_HASH_LENGTH,
+        type: module.ArgonType.Argon2id
+    });
+    
+    // Importa l'hash come chiave AES-GCM
+    return crypto.subtle.importKey(
+        "raw",
+        hash,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
+}
+
+// Deriva chiave usando PBKDF2 (formato v2)
+async function deriveKeyPBKDF2v2(password, salt) {
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
         "raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]
     );
     return crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt, iterations: ITERATIONS_NEW, hash: "SHA-512" },
+        { name: "PBKDF2", salt, iterations: ITERATIONS_V2, hash: "SHA-512" },
         keyMaterial,
         { name: "AES-GCM", length: 256 },
         false,
@@ -63,7 +87,8 @@ async function deriveKeyNew(password, salt) {
     );
 }
 
-async function deriveKeyOld(password, salt) {
+// Deriva chiave usando PBKDF2 (formato v1 - legacy)
+async function deriveKeyPBKDF2v1(password, salt) {
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
         "raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]
@@ -77,23 +102,27 @@ async function deriveKeyOld(password, salt) {
     );
 }
 
+// Cripta i dati usando Argon2 (nuovo formato v3)
 async function encryptData(data, password) {
-    try { await argon2Promise; } catch (e) { throw new Error('Argon2 failed: ' + e.message); }
-    const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+    const salt = crypto.getRandomValues(new Uint8Array(ARGON2_SALT_LENGTH));
     const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
     const key = await deriveKeyArgon2(password, salt);
     const encoded = new TextEncoder().encode(JSON.stringify(data));
     const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
         { name: "AES-GCM", iv }, key, encoded
     ));
-    const result = new Uint8Array(1 + SALT_LENGTH + IV_LENGTH + ciphertext.byteLength);
+    
+    // Formato: [version(1)] [salt(32)] [iv(12)] [ciphertext]
+    const result = new Uint8Array(1 + ARGON2_SALT_LENGTH + IV_LENGTH + ciphertext.byteLength);
     result.set([FORMAT_VERSION], 0);
     result.set(salt, 1);
-    result.set(iv, 1 + SALT_LENGTH);
-    result.set(ciphertext, 1 + SALT_LENGTH + IV_LENGTH);
+    result.set(iv, 1 + ARGON2_SALT_LENGTH);
+    result.set(ciphertext, 1 + ARGON2_SALT_LENGTH + IV_LENGTH);
+    
     return uint8ToBase64Url(result);
 }
 
+// Decripta i dati con supporto per tutti i formati (v3, v2, v1, legacy)
 async function decryptData(encryptedBase64, password) {
     let data;
     try {
@@ -101,26 +130,52 @@ async function decryptData(encryptedBase64, password) {
     } catch (e) {
         throw new Error("Invalid Base64");
     }
+    
     if (data.length < 30) throw new Error("Corrupted data");
+    
     const version = data[0];
-    let salt, iv, ciphertext, key;
+    
+    // Formato v3 - Argon2
     if (version === FORMAT_VERSION) {
-        salt = data.slice(1, 1 + SALT_LENGTH);
-        iv = data.slice(1 + SALT_LENGTH, 1 + SALT_LENGTH + IV_LENGTH);
-        ciphertext = data.slice(1 + SALT_LENGTH + IV_LENGTH);
-        key = await deriveKeyArgon2(password, salt);
-    } else if (version === OLD_FORMAT_VERSION_NEW) {
-        salt = data.slice(1, 1 + SALT_LENGTH);
-        iv = data.slice(1 + SALT_LENGTH, 1 + SALT_LENGTH + IV_LENGTH);
-        ciphertext = data.slice(1 + SALT_LENGTH + IV_LENGTH);
-        key = await deriveKeyNew(password, salt);
-    } else {
-        const compatibleData = (version === OLD_FORMAT_VERSION_OLD) ? data.slice(1) : data;
-        salt = compatibleData.slice(0, 16);
-        iv = compatibleData.slice(16, 28);
-        ciphertext = compatibleData.slice(28);
-        key = await deriveKeyOld(password, salt);
+        const salt = data.slice(1, 1 + ARGON2_SALT_LENGTH);
+        const iv = data.slice(1 + ARGON2_SALT_LENGTH, 1 + ARGON2_SALT_LENGTH + IV_LENGTH);
+        const ciphertext = data.slice(1 + ARGON2_SALT_LENGTH + IV_LENGTH);
+        const key = await deriveKeyArgon2(password, salt);
+        
+        try {
+            const decrypted = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv }, key, ciphertext
+            );
+            return JSON.parse(new TextDecoder().decode(decrypted));
+        } catch (e) {
+            throw new Error("Incorrect password or corrupted data");
+        }
     }
+    
+    // Formato v2 - PBKDF2 con SHA-512
+    if (version === PBKDF2_V2_FORMAT) {
+        const salt = data.slice(1, 1 + SALT_LENGTH_V2);
+        const iv = data.slice(1 + SALT_LENGTH_V2, 1 + SALT_LENGTH_V2 + IV_LENGTH);
+        const ciphertext = data.slice(1 + SALT_LENGTH_V2 + IV_LENGTH);
+        const key = await deriveKeyPBKDF2v2(password, salt);
+        
+        try {
+            const decrypted = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv }, key, ciphertext
+            );
+            return JSON.parse(new TextDecoder().decode(decrypted));
+        } catch (e) {
+            throw new Error("Incorrect password or corrupted data");
+        }
+    }
+    
+    // Formato v1 e legacy - PBKDF2 con SHA-256
+    const compatibleData = (version === PBKDF2_V1_FORMAT) ? data.slice(1) : data;
+    const salt = compatibleData.slice(0, 16);
+    const iv = compatibleData.slice(16, 28);
+    const ciphertext = compatibleData.slice(28);
+    const key = await deriveKeyPBKDF2v1(password, salt);
+    
     try {
         const decrypted = await crypto.subtle.decrypt(
             { name: "AES-GCM", iv }, key, ciphertext
@@ -153,8 +208,7 @@ function zeroPassword(pass) {
     }
 }
 
+// Espone le funzioni pubbliche
 window.encryptData = encryptData;
 window.decryptData = decryptData;
 window.zeroPassword = zeroPassword;
-window.isCryptoReady = () => argon2Ready;
-window.whenCryptoReady = () => argon2Promise;
