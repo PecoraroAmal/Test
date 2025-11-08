@@ -13,7 +13,7 @@ const getScriptPath=()=>{
     if(typeof import.meta!=='undefined'&&import.meta.url)return new URL('.',import.meta.url).pathname;
     const scripts=document.querySelectorAll('script[src]');
     for(let s of scripts)if(s.src.includes('crypto.js'))return new URL('.',s.src).pathname;
-    return'/';
+    return'/js/';
 };
 
 const loadArgon2=()=>new Promise((resolve,reject)=>{
